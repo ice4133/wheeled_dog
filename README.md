@@ -28,9 +28,9 @@ ros2 run wheeled_dog motor_controller_node
 
 
 # （可选）修改包名方法
-1.修改package.xml中的name标签
-2.修改CMakeLists.txt中的project标签
-3.修改物理目录下的包名,以及include下的包名
-4.删去build、install、log
+1. 修改package.xml中的name标签
+2. 修改CMakeLists.txt中的project标签
+3. 修改物理目录下的包名,以及include下的包名
+4. 删去build、install、log
 
 重新编译、source即可
