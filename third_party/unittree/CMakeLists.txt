@@ -7,12 +7,5 @@ link_directories(
     lib/
 )
 
-#example
-add_executable(motorctrl driver/src/main.cpp)
-target_link_libraries(motorctrl libUnitreeMotorSDK_M80106_Linux64.so)
-
-#example
-add_executable(stop driver/src/stop.cpp)
-target_link_libraries(stop libUnitreeMotorSDK_M80106_Linux64.so)
 
 
