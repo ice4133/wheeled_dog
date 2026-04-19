@@ -17,6 +17,13 @@ git clone https://github.com/ice4133/wheeled_dog.git
 # 第二个wheeled_dog是包名
 # 如果不想要这个可以修改
 
+cd ../..
+
+# 返回到ros2_ws目录下,wheeled_dog是包名
+colcon build --packages-select wheeled_dog
+source install/setup.bash
+ros2 run wheeled_dog motor_controller_node
+
 ```
 
 
