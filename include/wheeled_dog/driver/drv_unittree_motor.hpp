@@ -54,13 +54,14 @@ private:
     // 保存12个电机的目标状态（来自上层）
     std::vector<unittree_motor_data_t> unittree_motor_data_vector_;
 
-
     //第三方库串口对象
     SerialPort serial_; // 保持串口连接的生命周期
 
+
+
+    // 电机数据
     float K_P = 0.02;// 关节刚度系数   0~25.599
     float K_W = 0.01;// 关节速度系数   0~25.599
-
     //限位数据
 };
 
