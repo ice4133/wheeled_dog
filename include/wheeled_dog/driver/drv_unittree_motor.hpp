@@ -1,5 +1,5 @@
-#ifndef __DRV_UNITTREE_MOTOR_H
-#define __DRV_UNITTREE_MOTOR_H
+#ifndef __DRV_UNITTREE_MOTOR_HPP
+#define __DRV_UNITTREE_MOTOR_HPP
 
 
 #include <rclcpp/rclcpp.hpp>
@@ -11,34 +11,57 @@
 // 引入第三方库的头文件
 #include "serialPort/SerialPort.h" 
 
-class MotorControllerNode : public rclcpp::Node {
+
+
+typedef struct 
+{
+    double target_position;  // 目标位置 ±411774 (rad)
+    double target_velocity;  // 目标速度 ±804.00 （rad/s）
+
+    double actual_position;  // 实际位置 ±411774 (rad)
+    double actual_velocity;  // 实际速度 ±804.00 （rad/s）
+    double actual_effort;    // 实际力矩 ±127.99 （N.m）
+
+    MotorData   data;        // 反馈数据结构体
+}unittree_motor_data_t;
+
+
+
+
+
+class MotorControllerNode : public rclcpp::Node 
+{
 public:
     MotorControllerNode();
     ~MotorControllerNode();
 
 private:
-    // 1. ROS2 通信接口
+    // ROS2 通信接口
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr cmd_sub_;
 
-    // 2. 核心回调与大循环
-    void cmd_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg);
+    //  核心回调与大循环
+    void Cmd_Topic_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg);
     void TIM_PeriodElapsedCallback();
 
-    // 3. 电机交互数据
+
     void exchange_motor_data();
+    void Motor_Init();
 
-    // 4. 数据缓存 (Data Buffers)
+
+    // 数据缓存 (Data Buffers)
     // 保存12个电机的目标状态（来自上层）
-    std::vector<double> target_positions_;
-    // 保存12个电机的实际状态（来自底层硬件）
-    std::vector<double> actual_positions_;
-    std::vector<double> actual_velocities_;
-    std::vector<double> actual_efforts_; // 电流或力矩
+    std::vector<unittree_motor_data_t> unittree_motor_data_vector_;
 
-    //5.第三方库串口对象
+
+    //第三方库串口对象
     SerialPort serial_; // 保持串口连接的生命周期
+
+    float K_P = 0.02;// 关节刚度系数   0~25.599
+    float K_W = 0.01;// 关节速度系数   0~25.599
+
+    //限位数据
 };
 
 

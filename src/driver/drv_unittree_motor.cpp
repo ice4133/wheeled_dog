@@ -16,21 +16,19 @@ using std::placeholders::_1;
 */
 MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial_("/dev/ttyUSB0")
 {
-  //初始化数组
-  target_positions_.resize(12, 0.0);
-  actual_positions_.resize(12, 0.0);
-  actual_velocities_.resize(12, 0.0);
-  actual_efforts_.resize(12, 0.0);
+  // 初始化电机
+    Motor_Init();
 
-  // 2. 初始化发布者：向上层发送机器人的实际关节状态 (标准ROS2消息)
+
+  // 初始化发布者：向上层发送机器人的实际关节状态 (标准ROS2消息,先不自己写)
     joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
 
-  // 3. 初始化订阅者：接收上层的控制指令 (这里用Float64数组简化，实际可用更复杂的消息)
+  // 初始化订阅者：接收上层的控制指令 (这里用Float64数组简化，实际可用更复杂的消息)
     cmd_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
-        "joint_cmds", 10, std::bind(&MotorControllerNode::cmd_callback, this, _1));
+        "joint_cmds", 10, std::bind(&MotorControllerNode::Cmd_Topic_Callback, this, _1));
 
-  // 4. 初始化控制循环定时器：500Hz (2ms)
-    timer_ = this->create_wall_timer(2ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
+  // 初始化控制循环定时器
+    timer_ = this->create_wall_timer(10ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
     
   RCLCPP_INFO(this->get_logger(), "四轮足电机控制节点已启动，运行频率: 500Hz");    
 
@@ -44,10 +42,30 @@ MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial
 */
 MotorControllerNode::~MotorControllerNode()
 {
-
+  MotorCmd    cmd;
+  for(int i = 0; i < 12; ++i)
+  {
+    cmd.id = i;
+    cmd.mode = 0;
+    cmd.K_P = 0.0;
+    cmd.K_W = 0.0;
+    cmd.Pos = 0.0;
+    cmd.W = 0.0;
+    cmd.T = 0.0;
+    serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
+  }
   RCLCPP_INFO(this->get_logger(), "节点关闭，执行安全停机...");
 }
 
+/*
+*
+* @brief 电机角度初始化函数：在节点启动时设置初始状态
+*
+*/
+void MotorControllerNode::Motor_Init()
+{
+  unittree_motor_data_vector_.resize(12); // 预分配12个电机的数据结构
+}
 
 
 /*
@@ -55,14 +73,15 @@ MotorControllerNode::~MotorControllerNode()
 * @brief 电机控制器节点订阅回调函数：当收到上层计算好的动作指令时触发
 *
 */
-void MotorControllerNode::cmd_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) 
+void MotorControllerNode::Cmd_Topic_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) 
 {
     // 校验数据长度是否为12
     if (msg->data.size() == 12)
     {
         // 只做一件事：更新内存中的目标值
-        for (size_t i = 0; i < 12; ++i) {
-            target_positions_[i] = msg->data[i];
+        for (size_t i = 0; i < 12; ++i) 
+        {
+            unittree_motor_data_vector_[i].target_position = msg->data[i];
         }
     } 
     else 
@@ -87,11 +106,12 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
     auto state_msg = sensor_msgs::msg::JointState();
     state_msg.header.stamp = this->now();
     
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 12; ++i) 
+    {
         state_msg.name.push_back("motor_" + std::to_string(i));
-        state_msg.position.push_back(actual_positions_[i]);
-        state_msg.velocity.push_back(actual_velocities_[i]);
-        state_msg.effort.push_back(actual_efforts_[i]);
+        state_msg.position.push_back(unittree_motor_data_vector_[i].actual_position);
+        state_msg.velocity.push_back(unittree_motor_data_vector_[i].actual_velocity);
+        state_msg.effort.push_back(unittree_motor_data_vector_[i].actual_effort);
     }
     joint_state_pub_->publish(state_msg);
 }
@@ -103,26 +123,51 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
 */
 void MotorControllerNode::exchange_motor_data() 
 {
+    //  𝜏 = 𝜏𝑓𝑓 + 𝑘𝑝 × (𝑝𝑑𝑒𝑠 − 𝑝) + 𝑘𝑑 × (𝜔𝑑𝑒𝑠 − 𝜔)
     // 构造发送数据包 (提取自 main.cpp)
     MotorCmd    cmd;
-    MotorData   data;
 
-    cmd.motorType = MotorType::GO_M8010_6;
-    cmd.id    = 0;
-    cmd.mode  = 1;    // 1代表运行
-    cmd.K_P   = 0.02;
-    cmd.K_W   = 0.0;
-    cmd.Pos   = target_positions_[0]; // 这里只控制第一个电机，实际可扩展到12个
-    cmd.W     = 0.0;
-    cmd.T     = 0.0;
+    cmd.motorType = MotorType::GO_M8010_6; 
 
-    // 与硬件进行通信，发送指令并接收状态
-    serial_.sendRecv(&cmd, &data);
+    // 位置环，腿部电机ID 0~7
+    for(int i =0;i<8;++i)
+    {
+        cmd.id = i;
+        cmd.mode = 1;
+        cmd.K_P   = K_P;
+        cmd.K_W   = 0.0;
+        cmd.Pos   = unittree_motor_data_vector_[i].target_position; 
+        cmd.W     = 0.0;
+        cmd.T     = 0.0;         
 
-    // 更新内存中的实际状态 (提取自 main.cpp)
-    actual_positions_[0] = data.Pos; // 这里只更新第一个电机，实际可扩展到12个
-    actual_velocities_[0] = data.W;
-    actual_efforts_[0] = data.T;
+        // 与硬件进行通信，发送指令并接收状态
+        serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
+        
+        // 更新内存中的实际状态 
+        unittree_motor_data_vector_[i].actual_position = unittree_motor_data_vector_[i].data.Pos; 
+        unittree_motor_data_vector_[i].actual_velocity = unittree_motor_data_vector_[i].data.W;
+        unittree_motor_data_vector_[i].actual_effort = unittree_motor_data_vector_[i].data.T;      
+    }
+
+    // 速度环，轮毂电机ID 8~11
+    for(int i = 8;i<12;++i)
+    {
+        cmd.id = i;
+        cmd.mode = 1;
+        cmd.K_P   = 0.0;
+        cmd.K_W   = K_W;
+        cmd.Pos   = 0.0; 
+        cmd.W     = unittree_motor_data_vector_[i].target_velocity; 
+        cmd.T     = 0.0;
+        
+        // 与硬件进行通信，发送指令并接收状态
+        serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
+        
+        // 更新内存中的实际状态 
+        unittree_motor_data_vector_[i].actual_position = unittree_motor_data_vector_[i].data.Pos;
+        unittree_motor_data_vector_[i].actual_velocity = unittree_motor_data_vector_[i].data.W;
+        unittree_motor_data_vector_[i].actual_effort = unittree_motor_data_vector_[i].data.T;         
+    }
 }
 
 //主函数

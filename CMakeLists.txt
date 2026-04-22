@@ -9,17 +9,35 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 
 add_executable(motor_controller_node src/driver/drv_unittree_motor.cpp)
+add_executable(controller_bridge_node src/interaction/ita_controller_bridge.cpp)
+
+
 target_include_directories(motor_controller_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
+target_include_directories(controller_bridge_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>) 
 target_compile_features(motor_controller_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(controller_bridge_node PUBLIC c_std_99 cxx_std_17) 
+
 ament_target_dependencies(
   motor_controller_node
   "rclcpp"
   "sensor_msgs"
 )
+
+ament_target_dependencies(
+  controller_bridge_node
+  "rclcpp"
+  "std_msgs"
+  "sensor_msgs"
+)
+
+
 target_include_directories(motor_controller_node PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/unittree/include)
 target_link_libraries(motor_controller_node ${CMAKE_CURRENT_SOURCE_DIR}/third_party/unittree/lib/libUnitreeMotorSDK_M80106_Linux64.so)
 set_target_properties(motor_controller_node PROPERTIES 
@@ -30,6 +48,11 @@ set_target_properties(motor_controller_node PROPERTIES
 
 install(TARGETS motor_controller_node
   DESTINATION lib/${PROJECT_NAME})
+install(TARGETS controller_bridge_node
+  DESTINATION lib/${PROJECT_NAME})
+
+
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
