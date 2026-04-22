@@ -8,6 +8,7 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 add_executable(motor_controller_node src/driver/drv_unittree_motor.cpp)
 target_include_directories(motor_controller_node PUBLIC
@@ -17,6 +18,7 @@ target_compile_features(motor_controller_node PUBLIC c_std_99 cxx_std_17)  # Req
 ament_target_dependencies(
   motor_controller_node
   "rclcpp"
+  "sensor_msgs"
 )
 target_include_directories(motor_controller_node PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/unittree/include)
 target_link_libraries(motor_controller_node ${CMAKE_CURRENT_SOURCE_DIR}/third_party/unittree/lib/libUnitreeMotorSDK_M80106_Linux64.so)
