@@ -11,7 +11,10 @@
 // 引入第三方库的头文件
 #include "serialPort/SerialPort.h" 
 
+#define MOTOR_COUNT 1
 
+#define TEST
+//#define DEMO
 
 typedef struct 
 {
@@ -48,6 +51,9 @@ private:
 
     void exchange_motor_data();
     void Motor_Init();
+    #ifdef TEST
+    void exchange_motor_data_test();
+    #endif
 
 
     // 数据缓存 (Data Buffers)
@@ -58,7 +64,7 @@ private:
     SerialPort serial_; // 保持串口连接的生命周期
 
 
-
+    int test = 0;
     // 电机数据
     float K_P = 0.02;// 关节刚度系数   0~25.599
     float K_W = 0.01;// 关节速度系数   0~25.599

@@ -43,7 +43,7 @@ MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial
 MotorControllerNode::~MotorControllerNode()
 {
   MotorCmd    cmd;
-  for(int i = 0; i < 12; ++i)
+  for(int i = 0; i < MOTOR_COUNT; ++i)
   {
     cmd.id = i;
     cmd.mode = 0;
@@ -64,12 +64,14 @@ MotorControllerNode::~MotorControllerNode()
 */
 void MotorControllerNode::Motor_Init()
 {
-  unittree_motor_data_vector_.resize(12); // 预分配12个电机的数据结构
+  unittree_motor_data_vector_.resize(MOTOR_COUNT); // 预分配12个电机的数据结构
+
+  unittree_motor_data_vector_[0].target_position = 0.0; // 初始位置
+  unittree_motor_data_vector_[1].target_position = 0.0; // 初始速度
 }
 
 
 /*
-*
 * @brief 电机控制器节点订阅回调函数：当收到上层计算好的动作指令时触发
 *
 */
@@ -100,13 +102,18 @@ void MotorControllerNode::Cmd_Topic_Callback(const std_msgs::msg::Float64MultiAr
 void MotorControllerNode::TIM_PeriodElapsedCallback() 
 {
   //发送指令并获取数据
+    #ifdef DEMO
     exchange_motor_data();
+    #endif
+    #ifdef TEST
+    exchange_motor_data_test();
+    #endif
 
     // 第二步：将刚刚拿到的实际硬件状态发布给 ROS2 的上层算法
     auto state_msg = sensor_msgs::msg::JointState();
     state_msg.header.stamp = this->now();
     
-    for (int i = 0; i < 12; ++i) 
+    for (int i = 0; i < MOTOR_COUNT; ++i) 
     {
         state_msg.name.push_back("motor_" + std::to_string(i));
         state_msg.position.push_back(unittree_motor_data_vector_[i].actual_position);
@@ -124,7 +131,7 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
 void MotorControllerNode::exchange_motor_data() 
 {
     //  𝜏 = 𝜏𝑓𝑓 + 𝑘𝑝 × (𝑝𝑑𝑒𝑠 − 𝑝) + 𝑘𝑑 × (𝜔𝑑𝑒𝑠 − 𝜔)
-    // 构造发送数据包 (提取自 main.cpp)
+    // 构造发送数据包 
     MotorCmd    cmd;
 
     cmd.motorType = MotorType::GO_M8010_6; 
@@ -169,7 +176,47 @@ void MotorControllerNode::exchange_motor_data()
         unittree_motor_data_vector_[i].actual_effort = unittree_motor_data_vector_[i].data.T;         
     }
 }
+#ifdef TEST
+void MotorControllerNode::exchange_motor_data_test()
+{
+  MotorCmd    cmd;
+  MotorData   data; 
 
+  cmd.motorType = MotorType::GO_M8010_6;
+  if(++test % 100 ==0)
+  {
+    unittree_motor_data_vector_[0].target_position+=0.1*6.33;
+    unittree_motor_data_vector_[1].target_position+=0.1*6.33;
+    for(int i=0;i<2;++i)
+    {
+      cmd.id = i;
+      cmd.mode = 1;
+      cmd.K_P   = K_P;
+      cmd.K_W   = 0.0;
+      cmd.Pos   = unittree_motor_data_vector_[i].target_position;
+      cmd.W     = 0.0; 
+      cmd.T     = 0.0; 
+
+      serial_.sendRecv(&cmd, &data);
+    }
+    if(test>60000)
+    {
+      test = 0;
+    }
+  }
+
+
+  cmd.id = 2;
+  cmd.mode = 1;
+  cmd.K_P   = 0.0;
+  cmd.K_W   = K_W;
+  cmd.Pos   = 0.0;
+  cmd.W     = 1.57*6.33;
+  cmd.T     = 0.0;
+  serial_.sendRecv(&cmd, &data);
+} 
+
+#endif
 //主函数
 int main(int argc, char * argv[])
 {
