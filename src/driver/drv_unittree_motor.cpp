@@ -28,7 +28,7 @@ MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial
         "joint_cmds", 10, std::bind(&MotorControllerNode::Cmd_Topic_Callback, this, _1));
 
   // 初始化控制循环定时器
-    timer_ = this->create_wall_timer(10ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
+    timer_ = this->create_wall_timer(2ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
     
   RCLCPP_INFO(this->get_logger(), "四轮足电机控制节点已启动，运行频率: 500Hz");    
 
@@ -180,7 +180,7 @@ void MotorControllerNode::exchange_motor_data()
 void MotorControllerNode::exchange_motor_data_test()
 {
   MotorCmd    cmd;
-  MotorData   data; 
+ 
 
   cmd.motorType = MotorType::GO_M8010_6;
   if(++test % 100 ==0)
@@ -197,24 +197,29 @@ void MotorControllerNode::exchange_motor_data_test()
       cmd.W     = 0.0; 
       cmd.T     = 0.0; 
 
-      serial_.sendRecv(&cmd, &data);
+      serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
     }
+    }
+    std::cout<<"data "<<unittree_motor_data_vector_[0].data.Pos<<std::endl;
+    std::cout<<"data1 "<<unittree_motor_data_vector_[1].data.Pos<<std::endl;
+    RCLCPP_INFO(this->get_logger(), "position: %.2f", unittree_motor_data_vector_[0].target_position);
+    RCLCPP_INFO(this->get_logger(), "position: %.2f", unittree_motor_data_vector_[1].target_position);    
+    RCLCPP_INFO(this->get_logger(), "test: %d", test);
     if(test>60000)
     {
       test = 0;
     }
-  }
 
+    cmd.id = 2;
+    cmd.mode = 1;
+    cmd.K_P   = 0.0;
+    cmd.K_W   = K_W;
+    cmd.Pos   = 0.0;
+    cmd.W     = 1.57*6.33;
+    cmd.T     = 0.0;
 
-  cmd.id = 2;
-  cmd.mode = 1;
-  cmd.K_P   = 0.0;
-  cmd.K_W   = K_W;
-  cmd.Pos   = 0.0;
-  cmd.W     = 1.57*6.33;
-  cmd.T     = 0.0;
-  serial_.sendRecv(&cmd, &data);
-} 
+    serial_.sendRecv(&cmd, &unittree_motor_data_vector_[2].data);
+}
 
 #endif
 //主函数

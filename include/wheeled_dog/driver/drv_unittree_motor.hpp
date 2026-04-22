@@ -11,10 +11,10 @@
 // 引入第三方库的头文件
 #include "serialPort/SerialPort.h" 
 
-#define MOTOR_COUNT 1
+#define MOTOR_COUNT 12
 
-#define TEST
-//#define DEMO
+//#define TEST
+#define DEMO
 
 typedef struct 
 {
