@@ -11,7 +11,10 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
-add_executable(motor_controller_node src/driver/drv_unittree_motor.cpp)
+add_executable(motor_controller_node 
+src/driver/drv_unittree_motor.cpp
+src/algorithm/alg_slope.cpp
+)
 add_executable(controller_bridge_node src/interaction/ita_controller_bridge.cpp)
 
 

@@ -28,7 +28,7 @@ MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial
         "joint_cmds", 10, std::bind(&MotorControllerNode::Cmd_Topic_Callback, this, _1));
 
   // 初始化控制循环定时器
-    timer_ = this->create_wall_timer(2ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
+    timer_ = this->create_wall_timer(5ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
     
   RCLCPP_INFO(this->get_logger(), "四轮足电机控制节点已启动，运行频率: 500Hz");    
 
@@ -43,6 +43,7 @@ MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial
 MotorControllerNode::~MotorControllerNode()
 {
   MotorCmd    cmd;
+  cmd.motorType = MotorType::GO_M8010_6;
   for(int i = 0; i < MOTOR_COUNT; ++i)
   {
     cmd.id = i;
@@ -67,7 +68,7 @@ void MotorControllerNode::Motor_Init()
   unittree_motor_data_vector_.resize(MOTOR_COUNT); // 预分配12个电机的数据结构
 
   unittree_motor_data_vector_[0].target_position = 0.0; // 初始位置
-  unittree_motor_data_vector_[1].target_position = 0.0; // 初始速度
+  unittree_motor_data_vector_[1].target_position = 0.0; // 初始位置
 }
 
 
@@ -101,6 +102,9 @@ void MotorControllerNode::Cmd_Topic_Callback(const std_msgs::msg::Float64MultiAr
 */
 void MotorControllerNode::TIM_PeriodElapsedCallback() 
 {
+
+
+    auto start_time = std::chrono::high_resolution_clock::now();  
   //发送指令并获取数据
     #ifdef DEMO
     exchange_motor_data();
@@ -110,17 +114,23 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
     #endif
 
     // 第二步：将刚刚拿到的实际硬件状态发布给 ROS2 的上层算法
-    auto state_msg = sensor_msgs::msg::JointState();
-    state_msg.header.stamp = this->now();
+    // auto state_msg = sensor_msgs::msg::JointState();
+    // state_msg.header.stamp = this->now();
     
-    for (int i = 0; i < MOTOR_COUNT; ++i) 
-    {
-        state_msg.name.push_back("motor_" + std::to_string(i));
-        state_msg.position.push_back(unittree_motor_data_vector_[i].actual_position);
-        state_msg.velocity.push_back(unittree_motor_data_vector_[i].actual_velocity);
-        state_msg.effort.push_back(unittree_motor_data_vector_[i].actual_effort);
-    }
-    joint_state_pub_->publish(state_msg);
+    // for (int i = 0; i < MOTOR_COUNT; ++i) 
+    // {
+    //     state_msg.name.push_back("motor_" + std::to_string(i));
+    //     state_msg.position.push_back(unittree_motor_data_vector_[i].actual_position);
+    //     state_msg.velocity.push_back(unittree_motor_data_vector_[i].actual_velocity);
+    //     state_msg.effort.push_back(unittree_motor_data_vector_[i].actual_effort);
+    // }
+    // joint_state_pub_->publish(state_msg);
+
+// --- 2. 记录结束时间并计算差值 ---
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+    
+    RCLCPP_INFO(this->get_logger(), "Execution Time: %ld us", duration.count());    
 }
 
 /*
@@ -143,7 +153,7 @@ void MotorControllerNode::exchange_motor_data()
         cmd.mode = 1;
         cmd.K_P   = K_P;
         cmd.K_W   = 0.0;
-        cmd.Pos   = unittree_motor_data_vector_[i].target_position; 
+        cmd.Pos   = slope_filter.update(unittree_motor_data_vector_[i].target_position,0.0f);
         cmd.W     = 0.0;
         cmd.T     = 0.0;         
 
@@ -164,7 +174,7 @@ void MotorControllerNode::exchange_motor_data()
         cmd.K_P   = 0.0;
         cmd.K_W   = K_W;
         cmd.Pos   = 0.0; 
-        cmd.W     = unittree_motor_data_vector_[i].target_velocity; 
+        cmd.W     = slope_filter.update(0.0f, unittree_motor_data_vector_[i].target_velocity);
         cmd.T     = 0.0;
         
         // 与硬件进行通信，发送指令并接收状态
@@ -179,46 +189,71 @@ void MotorControllerNode::exchange_motor_data()
 #ifdef TEST
 void MotorControllerNode::exchange_motor_data_test()
 {
-  MotorCmd    cmd;
- 
+  // if(++test % 100 ==0)
+  // {
+  //   unittree_motor_data_vector_[0].target_position+=0.1*6.33;
+  //   unittree_motor_data_vector_[1].target_position+=0.1*6.33;
+  //   for(int i=0;i<2;++i)
+  //   {
+  //     cmd.id = i;
+  //     cmd.mode = 1;
+  //     cmd.K_P   = K_P;
+  //     cmd.K_W   = 0.0;
+  //     cmd.Pos   = unittree_motor_data_vector_[i].target_position;
+  //     cmd.W     = 0.0; 
+  //     cmd.T     = 0.0; 
 
-  cmd.motorType = MotorType::GO_M8010_6;
-  if(++test % 100 ==0)
-  {
-    unittree_motor_data_vector_[0].target_position+=0.1*6.33;
-    unittree_motor_data_vector_[1].target_position+=0.1*6.33;
-    for(int i=0;i<2;++i)
-    {
-      cmd.id = i;
-      cmd.mode = 1;
-      cmd.K_P   = K_P;
-      cmd.K_W   = 0.0;
-      cmd.Pos   = unittree_motor_data_vector_[i].target_position;
-      cmd.W     = 0.0; 
-      cmd.T     = 0.0; 
+  //     serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
+  //   }
+  //   }
+  //   if(test>60000)
+  //   {
+  //     test = 0;
+  //   }
+    // for (int  i = 0; i < MOTOR_COUNT; i++)
+    // {
+    //   send_cmds_vec_[i].motorType = MotorType::GO_M8010_6;
+    //   send_cmds_vec_[i].id = i;
+    //   send_cmds_vec_[i].mode = 1;
+    //   send_cmds_vec_[i].K_P   = 0.0;
+    //   send_cmds_vec_[i].K_W   = K_W;
+    //   send_cmds_vec_[i].Pos   = 0.0;
+    //   send_cmds_vec_[i].W     = 1.57*6.33;
+    //   send_cmds_vec_[i].T     = 0.0;
+    // }
+    
+    // serial_.sendRecv(send_cmds_vec_,recv_datas_vec_);
 
-      serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
-    }
-    }
-    std::cout<<"data "<<unittree_motor_data_vector_[0].data.Pos<<std::endl;
-    std::cout<<"data1 "<<unittree_motor_data_vector_[1].data.Pos<<std::endl;
-    RCLCPP_INFO(this->get_logger(), "position: %.2f", unittree_motor_data_vector_[0].target_position);
-    RCLCPP_INFO(this->get_logger(), "position: %.2f", unittree_motor_data_vector_[1].target_position);    
-    RCLCPP_INFO(this->get_logger(), "test: %d", test);
-    if(test>60000)
-    {
-      test = 0;
-    }
+    // MotorCmd    cmd;
+    // cmd.motorType = MotorType::GO_M8010_6;
+    // for(int i =0;i<2;++i)
+    // {
+    //     cmd.id = i;
+    //     cmd.mode = 1;
+    //     cmd.K_P   = 0.0;
+    //     cmd.K_W   = K_W;
+    //     cmd.Pos   = 0.0;
+    //     cmd.W     = 1.57*6.33;
+    //     cmd.T     = 0.0;
 
-    cmd.id = 2;
+    //     serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
+    // }
+    MotorCmd    cmd;
+    cmd.motorType = MotorType::GO_M8010_6;
+    cmd.id = 0;
     cmd.mode = 1;
     cmd.K_P   = 0.0;
     cmd.K_W   = K_W;
     cmd.Pos   = 0.0;
     cmd.W     = 1.57*6.33;
     cmd.T     = 0.0;
+    serial_.sendRecv(&cmd, &unittree_motor_data_vector_[0].data);
+//     # 查看当前的延迟设置，默认通常是 16
+// cat /sys/class/tty/ttyUSB0/device/latency_timer
 
-    serial_.sendRecv(&cmd, &unittree_motor_data_vector_[2].data);
+// # 将其修改为 1 (这是最小值)
+// sudo sh -c 'echo 1 > /sys/class/tty/ttyUSB0/device/latency_timer'
+
 }
 
 #endif

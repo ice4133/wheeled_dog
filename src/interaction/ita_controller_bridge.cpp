@@ -26,7 +26,8 @@ void ControllerBridgeNode::feedback_callback(const sensor_msgs::msg::JointState:
     RCLCPP_INFO(this->get_logger(), "收到关节反馈数据");
     
     // 遍历所有关节
-    for (size_t i = 0; i < msg->name.size(); ++i) {
+    for (size_t i = 0; i < msg->name.size(); ++i) 
+    {
         RCLCPP_INFO(this->get_logger(), "关节 %s: 位置=%.3f, 速度=%.3f, 力矩=%.3f",
                     msg->name[i].c_str(),
                     msg->position[i],
