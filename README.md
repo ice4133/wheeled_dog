@@ -11,11 +11,13 @@ cd ~/wheeled_dog/ros2_ws/src
 
 # 使用ssh也行
 git clone https://github.com/ice4133/wheeled_dog.git
+git pull origin main
 
-
+code ./
 # 此时文件路径就是~/wheeled_dog/ros2_ws/src/wheeled_dog
 # 第二个wheeled_dog是包名
 # 如果不想要这个可以修改
+# 打开终端，开始编译和使用
 
 cd ../..
 
@@ -23,6 +25,9 @@ cd ../..
 colcon build --packages-select wheeled_dog
 source install/setup.bash
 ros2 run wheeled_dog motor_controller_node
+ros2 run wheeled_dog controller_bridge_node
+ros2 run wheeled_dog keyboard_controller_node
+
 
 ```
 
