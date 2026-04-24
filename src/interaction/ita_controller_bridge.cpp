@@ -11,7 +11,14 @@ ControllerBridgeNode::ControllerBridgeNode() : Node("controller_bridge_node"), p
     // 2. 初始化发布者：预留，用于之后给底层电机发送控制指令
     motor_cmd_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("joint_cmds", 10);
 
-    RCLCPP_INFO(this->get_logger(), "控制器桥接节点已启动，正在等待电机反馈数据...");
+    velocity_subscriber_ = this->create_subscription<geometry_msgs::msg::Twist>(
+            "cmd_vel", 
+            10, 
+            std::bind(&ControllerBridgeNode::command_callback, this, std::placeholders::_1)
+        );
+
+
+    RCLCPP_INFO(this->get_logger(), "控制器桥接节点已启动，正在等待电机反馈和键盘数据...");
 }
 
 // 回调函数实现
@@ -41,6 +48,24 @@ void ControllerBridgeNode::feedback_callback(const sensor_msgs::msg::JointState:
     // cmd_msg.data = { ... };
     // motor_cmd_pub_->publish(cmd_msg);
 }
+
+void ControllerBridgeNode::command_callback(const geometry_msgs::msg::Twist::SharedPtr msg) 
+{
+    // 提取键盘发来的数据
+    double linear_x = msg->linear.x;
+    double angular_z = msg->angular.z;
+
+    // 逻辑分类处理示例
+    RCLCPP_INFO(this->get_logger(), "收到指令: 线速度=%.2f, 角速度=%.2f", linear_x, angular_z);
+
+    // 编写后续解算逻辑 ---
+    // 例如：计算左右轮速度，或者判断是否需要切换步态
+    if (linear_x > 0) 
+    {
+        // 执行前进相关的算法逻辑
+    }
+}
+
 
 // 主函数
 int main(int argc, char * argv[]) {

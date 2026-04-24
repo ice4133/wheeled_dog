@@ -10,12 +10,16 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+
+
 
 add_executable(motor_controller_node 
 src/driver/drv_unittree_motor.cpp
 src/algorithm/alg_slope.cpp
 )
 add_executable(controller_bridge_node src/interaction/ita_controller_bridge.cpp)
+add_executable(keyboard_controller_node src/device/dev_keyboard.cpp)
 
 
 target_include_directories(motor_controller_node PUBLIC
@@ -24,8 +28,13 @@ target_include_directories(motor_controller_node PUBLIC
 target_include_directories(controller_bridge_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>) 
+target_include_directories(keyboard_controller_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>) 
+
 target_compile_features(motor_controller_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
-target_compile_features(controller_bridge_node PUBLIC c_std_99 cxx_std_17) 
+target_compile_features(controller_bridge_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(keyboard_controller_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 ament_target_dependencies(
   motor_controller_node
@@ -38,6 +47,12 @@ ament_target_dependencies(
   "rclcpp"
   "std_msgs"
   "sensor_msgs"
+  "geometry_msgs"
+)
+ament_target_dependencies(
+  keyboard_controller_node
+  "rclcpp"
+  "geometry_msgs"
 )
 
 
@@ -53,7 +68,8 @@ install(TARGETS motor_controller_node
   DESTINATION lib/${PROJECT_NAME})
 install(TARGETS controller_bridge_node
   DESTINATION lib/${PROJECT_NAME})
-
+install(TARGETS keyboard_controller_node
+  DESTINATION lib/${PROJECT_NAME})
 
 
 

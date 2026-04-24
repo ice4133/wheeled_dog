@@ -4,7 +4,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
-
+#include "geometry_msgs/msg/twist.hpp" 
 class ControllerBridgeNode : public rclcpp::Node 
 {
 public:
@@ -14,10 +14,13 @@ public:
 private:
     // 回调函数声明：处理电机回传数据
     void feedback_callback(const sensor_msgs::msg::JointState::SharedPtr msg);
+    //处理上层发来的速度指令
+    void command_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
 
     // ROS 2 通信接口声明
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_feedback_sub_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr motor_cmd_pub_;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocity_subscriber_;
 
     // 用于降低终端打印频率的计数器
     int print_counter_;

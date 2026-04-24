@@ -67,8 +67,8 @@ void MotorControllerNode::Motor_Init()
 {
   unittree_motor_data_vector_.resize(MOTOR_COUNT); // 预分配12个电机的数据结构
 
-  unittree_motor_data_vector_[0].target_position = 0.0; // 初始位置
-  unittree_motor_data_vector_[1].target_position = 0.0; // 初始位置
+  unittree_motor_data_vector_[6].target_position = -11.17; // 初始位置
+  unittree_motor_data_vector_[7].target_position = 1.77; // 初始位置
 }
 
 
@@ -238,16 +238,33 @@ void MotorControllerNode::exchange_motor_data_test()
 
     //     serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
     // }
-    MotorCmd    cmd;
-    cmd.motorType = MotorType::GO_M8010_6;
-    cmd.id = 0;
-    cmd.mode = 1;
-    cmd.K_P   = 0.0;
-    cmd.K_W   = K_W;
-    cmd.Pos   = 0.0;
-    cmd.W     = 1.57*6.33;
-    cmd.T     = 0.0;
-    serial_.sendRecv(&cmd, &unittree_motor_data_vector_[0].data);
+    // MotorCmd    cmd;
+    // cmd.motorType = MotorType::GO_M8010_6;
+    // cmd.id = 6;
+    // cmd.mode = 1;
+    // cmd.K_P   = K_P;
+    // cmd.K_W   = 0.0;
+    // cmd.Pos   = -11.17;
+    // cmd.W     = 0.0;
+    // cmd.T     = 0.0;
+    // serial_.sendRecv(&cmd, &unittree_motor_data_vector_[6].data);
+    // cmd.id = 7;
+    // cmd.mode =1;
+    // cmd.K_P = K_P;
+    // cmd.K_W   = 0.0;
+    // cmd.Pos   = 1.77;
+    // cmd.W     = 0.0;
+    // cmd.T     = 0.0;
+    // serial_.sendRecv(&cmd, &unittree_motor_data_vector_[7].data);
+    
+    // cmd.id =11;
+    // cmd.mode =1;
+    // cmd.K_P =0.0;
+    // cmd.K_W=K_W;
+    // cmd.Pos=0.0;
+    // cmd.W =0.0;
+    // cmd.T =0.0;
+    // serial_.sendRecv(&cmd, &unittree_motor_data_vector_[11].data);    
 //     # 查看当前的延迟设置，默认通常是 16
 // cat /sys/class/tty/ttyUSB0/device/latency_timer
 

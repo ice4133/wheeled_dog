@@ -15,7 +15,7 @@
 #include "wheeled_dog/algorithm/alg_slope.hpp"
 
 
-#define MOTOR_COUNT 2
+#define MOTOR_COUNT 12
 
 #define TEST
 //#define DEMO
@@ -31,6 +31,9 @@ typedef struct
 
     MotorCmd cmd; 
     MotorData data; 
+
+    float K_P; // 关节刚度系数 0~25.599
+    float K_W; // 关节速度系数 0~25.599
 
 }unittree_motor_data_t;
 
@@ -82,8 +85,8 @@ private:
 
     int test = 0;
     // 电机数据
-    float K_P = 0.02;// 关节刚度系数   0~25.599
-    float K_W = 0.01;// 关节速度系数   0~25.599
+    float K_P = 0.1;// 关节刚度系数   0~25.599
+    float K_W = 0.1;// 关节速度系数   0~25.599
     //限位数据
 };
 
