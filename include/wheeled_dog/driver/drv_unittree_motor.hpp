@@ -17,8 +17,8 @@
 
 #define MOTOR_COUNT 12
 
-#define TEST
-//#define DEMO
+//#define TEST
+#define DEMO
 
 typedef struct 
 {
@@ -86,7 +86,7 @@ private:
     int test = 0;
     // 电机数据
     float K_P = 0.1;// 关节刚度系数   0~25.599
-    float K_W = 0.1;// 关节速度系数   0~25.599
+    float K_W = 0.2;// 关节速度系数   0~25.599
     //限位数据
 };
 

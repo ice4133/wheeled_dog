@@ -28,7 +28,7 @@ MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial
         "joint_cmds", 10, std::bind(&MotorControllerNode::Cmd_Topic_Callback, this, _1));
 
   // 初始化控制循环定时器
-    timer_ = this->create_wall_timer(5ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
+    timer_ = this->create_wall_timer(10ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
     
   RCLCPP_INFO(this->get_logger(), "四轮足电机控制节点已启动，运行频率: 500Hz");    
 
@@ -67,8 +67,14 @@ void MotorControllerNode::Motor_Init()
 {
   unittree_motor_data_vector_.resize(MOTOR_COUNT); // 预分配12个电机的数据结构
 
-  unittree_motor_data_vector_[6].target_position = -11.17; // 初始位置
-  unittree_motor_data_vector_[7].target_position = 1.77; // 初始位置
+  unittree_motor_data_vector_[0].target_position = 20.77; // 初始位置
+  unittree_motor_data_vector_[1].target_position = 5.43; // 初始位置
+  unittree_motor_data_vector_[2].target_position = -14.84; // 初始位置
+  unittree_motor_data_vector_[3].target_position = 1.30; // 
+  unittree_motor_data_vector_[4].target_position = 16.23; // 初始位置
+  unittree_motor_data_vector_[5].target_position = 4.26; //
+  unittree_motor_data_vector_[6].target_position = -10.58; // 初始位置
+  unittree_motor_data_vector_[7].target_position = 1.95; // 初始位置
 }
 
 
@@ -153,7 +159,7 @@ void MotorControllerNode::exchange_motor_data()
         cmd.mode = 1;
         cmd.K_P   = K_P;
         cmd.K_W   = 0.0;
-        cmd.Pos   = slope_filter.update(unittree_motor_data_vector_[i].target_position,0.0f);
+        cmd.Pos   = unittree_motor_data_vector_[i].target_position;
         cmd.W     = 0.0;
         cmd.T     = 0.0;         
 
@@ -174,7 +180,7 @@ void MotorControllerNode::exchange_motor_data()
         cmd.K_P   = 0.0;
         cmd.K_W   = K_W;
         cmd.Pos   = 0.0; 
-        cmd.W     = slope_filter.update(0.0f, unittree_motor_data_vector_[i].target_velocity);
+        cmd.W     = 0.0;
         cmd.T     = 0.0;
         
         // 与硬件进行通信，发送指令并接收状态
@@ -189,6 +195,8 @@ void MotorControllerNode::exchange_motor_data()
 #ifdef TEST
 void MotorControllerNode::exchange_motor_data_test()
 {
+    MotorCmd    cmd;
+    cmd.motorType = MotorType::GO_M8010_6;
   // if(++test % 100 ==0)
   // {
   //   unittree_motor_data_vector_[0].target_position+=0.1*6.33;
@@ -257,14 +265,14 @@ void MotorControllerNode::exchange_motor_data_test()
     // cmd.T     = 0.0;
     // serial_.sendRecv(&cmd, &unittree_motor_data_vector_[7].data);
     
-    // cmd.id =11;
-    // cmd.mode =1;
-    // cmd.K_P =0.0;
-    // cmd.K_W=K_W;
-    // cmd.Pos=0.0;
-    // cmd.W =0.0;
-    // cmd.T =0.0;
-    // serial_.sendRecv(&cmd, &unittree_motor_data_vector_[11].data);    
+    cmd.id =2;
+    cmd.mode =1;
+    cmd.K_P =0.0;
+    cmd.K_W=K_W;
+    cmd.Pos=0.0;
+    cmd.W =1.57*6.33;
+    cmd.T =0.0;
+    serial_.sendRecv(&cmd, &unittree_motor_data_vector_[2].data);    
 //     # 查看当前的延迟设置，默认通常是 16
 // cat /sys/class/tty/ttyUSB0/device/latency_timer
 
