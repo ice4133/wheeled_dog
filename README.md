@@ -47,6 +47,9 @@ ros2 topic list -t # 列出所有话题以及名称
 ros2 topic info /topic_name # 查看话题的类型和发布者、订阅者等信息
 ros2 topic echo /topic_name # 订阅话题并打印消息内容
 
-
+ros2 interface list # 列出所有消息类型
+ros2 interface package std_msgs # 列出std_msgs包中的所有消息类型
+ros2 interface show std_msgs/msg/String # 显示std_msgs包中String消息的
+ros2 interface show geometry_msgs/msg/Twist # 显示geometry_msgs包中Twist消息的定义
 
 ```
