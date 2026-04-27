@@ -39,3 +39,14 @@ ros2 run wheeled_dog keyboard_controller_node
 4. 删去build、install、log
 
 重新编译、source即可
+
+
+# 常用ubuntu的ros2指令
+```bash
+ros2 topic list -t # 列出所有话题以及名称
+ros2 topic info /topic_name # 查看话题的类型和发布者、订阅者等信息
+ros2 topic echo /topic_name # 订阅话题并打印消息内容
+
+
+
+```

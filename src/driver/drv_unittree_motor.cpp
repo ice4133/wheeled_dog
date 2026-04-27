@@ -28,7 +28,7 @@ MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial
         "joint_cmds", 10, std::bind(&MotorControllerNode::Cmd_Topic_Callback, this, _1));
 
   // 初始化控制循环定时器
-    timer_ = this->create_wall_timer(10ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
+    timer_ = this->create_wall_timer(20ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
     
   RCLCPP_INFO(this->get_logger(), "四轮足电机控制节点已启动，运行频率: 500Hz");    
 
@@ -67,14 +67,14 @@ void MotorControllerNode::Motor_Init()
 {
   unittree_motor_data_vector_.resize(MOTOR_COUNT); // 预分配12个电机的数据结构
 
-  unittree_motor_data_vector_[0].target_position = 20.77; // 初始位置
-  unittree_motor_data_vector_[1].target_position = 5.43; // 初始位置
-  unittree_motor_data_vector_[2].target_position = -14.84; // 初始位置
-  unittree_motor_data_vector_[3].target_position = 1.30; // 
-  unittree_motor_data_vector_[4].target_position = 16.23; // 初始位置
-  unittree_motor_data_vector_[5].target_position = 4.26; //
-  unittree_motor_data_vector_[6].target_position = -10.58; // 初始位置
-  unittree_motor_data_vector_[7].target_position = 1.95; // 初始位置
+  unittree_motor_data_vector_[0].target_position = 14.77;
+  unittree_motor_data_vector_[1].target_position = 7.66;
+  unittree_motor_data_vector_[2].target_position = -7.58;
+  unittree_motor_data_vector_[3].target_position = -1.16; 
+  unittree_motor_data_vector_[4].target_position = 10.09; 
+  unittree_motor_data_vector_[5].target_position = 6.73; 
+  unittree_motor_data_vector_[6].target_position = -3.99; 
+  unittree_motor_data_vector_[7].target_position = -0.32; 
 }
 
 
