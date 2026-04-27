@@ -67,12 +67,12 @@ void MotorControllerNode::Motor_Init()
 {
   unittree_motor_data_vector_.resize(MOTOR_COUNT); // 预分配12个电机的数据结构
 
-  unittree_motor_data_vector_[0].target_position = 14.77;
+  unittree_motor_data_vector_[0].target_position = 8.78;
   unittree_motor_data_vector_[1].target_position = 7.66;
   unittree_motor_data_vector_[2].target_position = -7.58;
   unittree_motor_data_vector_[3].target_position = -1.16; 
   unittree_motor_data_vector_[4].target_position = 10.09; 
-  unittree_motor_data_vector_[5].target_position = 6.73; 
+  unittree_motor_data_vector_[5].target_position = 7.10; 
   unittree_motor_data_vector_[6].target_position = -3.99; 
   unittree_motor_data_vector_[7].target_position = -0.32; 
 }
@@ -146,51 +146,77 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
 */
 void MotorControllerNode::exchange_motor_data() 
 {
-    //  𝜏 = 𝜏𝑓𝑓 + 𝑘𝑝 × (𝑝𝑑𝑒𝑠 − 𝑝) + 𝑘𝑑 × (𝜔𝑑𝑒𝑠 − 𝜔)
-    // 构造发送数据包 
-    MotorCmd    cmd;
+    // //  𝜏 = 𝜏𝑓𝑓 + 𝑘𝑝 × (𝑝𝑑𝑒𝑠 − 𝑝) + 𝑘𝑑 × (𝜔𝑑𝑒𝑠 − 𝜔)
+    // // 构造发送数据包 
+    // MotorCmd    cmd;
 
-    cmd.motorType = MotorType::GO_M8010_6; 
+    // cmd.motorType = MotorType::GO_M8010_6; 
 
-    // 位置环，腿部电机ID 0~7
+    // // 位置环，腿部电机ID 0~7
+    // for(int i =0;i<8;++i)
+    // {
+    //     cmd.id = i;
+    //     cmd.mode = 1;
+    //     cmd.K_P   = K_P;
+    //     cmd.K_W   = 0.0;
+    //     cmd.Pos   = unittree_motor_data_vector_[i].target_position;
+    //     cmd.W     = 0.0;
+    //     cmd.T     = 0.0;         
+
+    //     // 与硬件进行通信，发送指令并接收状态
+    //     serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
+        
+    //     // 更新内存中的实际状态 
+    //     unittree_motor_data_vector_[i].actual_position = unittree_motor_data_vector_[i].data.Pos; 
+    //     unittree_motor_data_vector_[i].actual_velocity = unittree_motor_data_vector_[i].data.W;
+    //     unittree_motor_data_vector_[i].actual_effort = unittree_motor_data_vector_[i].data.T;      
+    // }
+
+    // // 速度环，轮毂电机ID 8~11
+    // for(int i = 8;i<12;++i)
+    // {
+    //     cmd.id = i;
+    //     cmd.mode = 1;
+    //     cmd.K_P   = 0.0;
+    //     cmd.K_W   = K_W;
+    //     cmd.Pos   = 0.0; 
+    //     cmd.W     = 0.0;
+    //     cmd.T     = 0.0;
+        
+    //     // 与硬件进行通信，发送指令并接收状态
+    //     serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
+        
+    //     // 更新内存中的实际状态 
+    //     unittree_motor_data_vector_[i].actual_position = unittree_motor_data_vector_[i].data.Pos;
+    //     unittree_motor_data_vector_[i].actual_velocity = unittree_motor_data_vector_[i].data.W;
+    //     unittree_motor_data_vector_[i].actual_effort = unittree_motor_data_vector_[i].data.T;         
+    // }
+
+
     for(int i =0;i<8;++i)
     {
-        cmd.id = i;
-        cmd.mode = 1;
-        cmd.K_P   = K_P;
-        cmd.K_W   = 0.0;
-        cmd.Pos   = unittree_motor_data_vector_[i].target_position;
-        cmd.W     = 0.0;
-        cmd.T     = 0.0;         
-
-        // 与硬件进行通信，发送指令并接收状态
-        serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
-        
-        // 更新内存中的实际状态 
-        unittree_motor_data_vector_[i].actual_position = unittree_motor_data_vector_[i].data.Pos; 
-        unittree_motor_data_vector_[i].actual_velocity = unittree_motor_data_vector_[i].data.W;
-        unittree_motor_data_vector_[i].actual_effort = unittree_motor_data_vector_[i].data.T;      
+        send_cmds_vec_[i].motorType = MotorType::GO_M8010_6;
+        send_cmds_vec_[i].id = i;
+        send_cmds_vec_[i].mode = 1;
+        send_cmds_vec_[i].K_P   = K_P;
+        send_cmds_vec_[i].K_W   = 0.0;
+        send_cmds_vec_[i].Pos   = unittree_motor_data_vector_[i].target_position;
+        send_cmds_vec_[i].W     = 0.0; 
+        send_cmds_vec_[i].T     = 0.0; 
     }
-
-    // 速度环，轮毂电机ID 8~11
     for(int i = 8;i<12;++i)
     {
-        cmd.id = i;
-        cmd.mode = 1;
-        cmd.K_P   = 0.0;
-        cmd.K_W   = K_W;
-        cmd.Pos   = 0.0; 
-        cmd.W     = 0.0;
-        cmd.T     = 0.0;
-        
-        // 与硬件进行通信，发送指令并接收状态
-        serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
-        
-        // 更新内存中的实际状态 
-        unittree_motor_data_vector_[i].actual_position = unittree_motor_data_vector_[i].data.Pos;
-        unittree_motor_data_vector_[i].actual_velocity = unittree_motor_data_vector_[i].data.W;
-        unittree_motor_data_vector_[i].actual_effort = unittree_motor_data_vector_[i].data.T;         
+        send_cmds_vec_[i].motorType = MotorType::GO_M8010_6;
+        send_cmds_vec_[i].id = i;
+        send_cmds_vec_[i].mode = 1;
+        send_cmds_vec_[i].K_P   = 0.0;
+        send_cmds_vec_[i].K_W   = K_W;
+        send_cmds_vec_[i].Pos   = 0.0; 
+        send_cmds_vec_[i].W     = 0.0;
+        send_cmds_vec_[i].T     = 0.0; 
     }
+
+   feedback_flag = serial_.sendRecv(send_cmds_vec_,recv_datas_vec_);
 }
 #ifdef TEST
 void MotorControllerNode::exchange_motor_data_test()
