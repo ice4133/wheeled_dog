@@ -4,60 +4,41 @@
 namespace algorithm 
 {
 
-Class_Slope_Filter::Class_Slope_Filter(float __max_step_position, float __max_step_velocity, float initial_value)
-    : max_step_position(__max_step_position), max_step_velocity(__max_step_velocity), current_value_(initial_value) 
-
+void Class_Slope_Filter::Init(float __start_pos, float __max_speed, float __delta_t)
 {
-    
+    q_current_des = __start_pos;
+    v_max = __max_speed;
+    dt = __delta_t;    
 }
-
-float Class_Slope_Filter::update(float target_position,float target_velocity)
+float Class_Slope_Filter::update(float target_position)
 {
-    if(target_velocity ==0.0f && target_position != 0.0f)
-    {
-        // 计算目标值与当前值的差值
-        float error = target_position - current_value_;
-        
-        // 限制单次变化量在 [-max_step_, max_step_] 之间
-        float step = std::clamp(error, -max_step_position, max_step_position);
-        
-        // 更新当前状态
-        current_value_ += step;
-        
-        return current_value_;
-    }
-    else
-    {
-        // 计算目标值与当前值的差值
-        float error = target_velocity - current_value_;
-        
-        // 限制单次变化量在 [-max_step_, max_step_] 之间
-        float step = std::clamp(error, -max_step_velocity, max_step_velocity);
-        
-        // 更新当前状态
-        current_value_ += step;
-        
-        return current_value_;
-    }
+    float diff = target_position - q_current_des;
+            
+            // 2. 计算当前周期允许的最大步长
+            float max_step = v_max * dt;
+
+            // 3. 逻辑判断与状态更新
+            if (std::abs(diff) <= max_step) 
+            {
+                // 距离已经足够小，一步到位
+                q_current_des = target_position;
+            } 
+            else if (diff > 0.0f) 
+            {
+                // 目标在正方向，按最大步长累加
+                q_current_des += max_step;
+            } 
+            else 
+            {
+                // 目标在反方向，按最大步长递减
+                q_current_des -= max_step;
+            }
+
+            return q_current_des;
 
 }
 
-void Class_Slope_Filter::reset(float value) 
-{
-    current_value_ = value;
-}
 
 
-/*
-*
-* @brief 动态调整步长
-* @param max_step 新的最大步长
-*/
-
-void Class_Slope_Filter::setMaxStep(float __max_step_position, float __max_step_velocity) 
-{
-    max_step_position = __max_step_position;
-    max_step_velocity = __max_step_velocity;
-}
 
 } // namespace algorithm

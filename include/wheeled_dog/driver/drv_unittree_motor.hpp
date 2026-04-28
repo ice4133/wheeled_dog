@@ -35,6 +35,8 @@ typedef struct
     float K_P; // 关节刚度系数 0~25.599
     float K_W; // 关节速度系数 0~25.599
 
+    algorithm::Class_Slope_Filter slope_filter; // 斜坡滤波器对象
+
 }unittree_motor_data_t;
 
 
@@ -79,7 +81,7 @@ private:
 
 
     //算法类声明，用以组合底层和算法
-    algorithm::Class_Slope_Filter slope_filter; // 斜坡滤波器对象
+
 
 
 

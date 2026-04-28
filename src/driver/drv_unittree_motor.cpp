@@ -91,6 +91,16 @@ void MotorControllerNode::Motor_Init()
   unittree_motor_data_vector_[5].target_position = 7.10; 
   unittree_motor_data_vector_[6].target_position = -3.99; 
   unittree_motor_data_vector_[7].target_position = -0.32; 
+
+
+  unittree_motor_data_vector_[0].slope_filter.Init(0.23f,50.0f,0.02f);
+  unittree_motor_data_vector_[1].slope_filter.Init(5.61f,50.0f,0.02f);
+  unittree_motor_data_vector_[2].slope_filter.Init(1.31f,50.0f,0.02f);
+  unittree_motor_data_vector_[3].slope_filter.Init(0.85f,50.0f,0.02f);    
+  unittree_motor_data_vector_[4].slope_filter.Init(1.26f,50.0f,0.02f);
+  unittree_motor_data_vector_[5].slope_filter.Init(4.59f,50.0f,0.02f);
+  unittree_motor_data_vector_[6].slope_filter.Init(4.91f,50.0f,0.02f);
+  unittree_motor_data_vector_[7].slope_filter.Init(1.61f,50.0f,0.02f);
 }
 
 
@@ -216,7 +226,7 @@ void MotorControllerNode::exchange_motor_data()
         send_cmds_vec_[i].mode = 1;
         send_cmds_vec_[i].K_P   = unittree_motor_data_vector_[i].K_P;
         send_cmds_vec_[i].K_W   = unittree_motor_data_vector_[i].K_W;
-        send_cmds_vec_[i].Pos   = unittree_motor_data_vector_[i].target_position;
+        send_cmds_vec_[i].Pos   = unittree_motor_data_vector_[i].slope_filter.update(unittree_motor_data_vector_[i].target_position);
         send_cmds_vec_[i].W     = 0.0; 
         send_cmds_vec_[i].T     = 0.0; 
     }
