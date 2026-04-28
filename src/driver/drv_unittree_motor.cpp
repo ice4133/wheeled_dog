@@ -14,7 +14,7 @@ using std::placeholders::_1;
 * @brief 电机控制器节点构造函数：节点启动
 *
 */
-MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial_("/dev/ttyUSB0")
+MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial_("/dev/ttyUSB1")
 {
   // 初始化电机
     Motor_Init();
@@ -67,6 +67,22 @@ void MotorControllerNode::Motor_Init()
 {
   unittree_motor_data_vector_.resize(MOTOR_COUNT); // 预分配12个电机的数据结构
 
+  unittree_motor_data_vector_[0].K_P = 0.55;
+  unittree_motor_data_vector_[1].K_P = 0.55;
+  unittree_motor_data_vector_[2].K_P = 0.55;
+  unittree_motor_data_vector_[3].K_P = 0.55;
+  unittree_motor_data_vector_[4].K_P = 0.65;
+  unittree_motor_data_vector_[5].K_P = 0.65;
+  unittree_motor_data_vector_[6].K_P = 0.65;
+  unittree_motor_data_vector_[7].K_P = 0.65;
+  unittree_motor_data_vector_[0].K_W = 0.03;
+  unittree_motor_data_vector_[1].K_W = 0.03;
+  unittree_motor_data_vector_[2].K_W = 0.03;
+  unittree_motor_data_vector_[3].K_W = 0.03;
+  unittree_motor_data_vector_[4].K_W = 0.04;
+  unittree_motor_data_vector_[5].K_W = 0.04; 
+  unittree_motor_data_vector_[6].K_W = 0.04;
+  unittree_motor_data_vector_[7].K_W = 0.04;
   unittree_motor_data_vector_[0].target_position = 8.78;
   unittree_motor_data_vector_[1].target_position = 7.66;
   unittree_motor_data_vector_[2].target_position = -7.58;
@@ -198,8 +214,8 @@ void MotorControllerNode::exchange_motor_data()
         send_cmds_vec_[i].motorType = MotorType::GO_M8010_6;
         send_cmds_vec_[i].id = i;
         send_cmds_vec_[i].mode = 1;
-        send_cmds_vec_[i].K_P   = K_P;
-        send_cmds_vec_[i].K_W   = 0.0;
+        send_cmds_vec_[i].K_P   = unittree_motor_data_vector_[i].K_P;
+        send_cmds_vec_[i].K_W   = unittree_motor_data_vector_[i].K_W;
         send_cmds_vec_[i].Pos   = unittree_motor_data_vector_[i].target_position;
         send_cmds_vec_[i].W     = 0.0; 
         send_cmds_vec_[i].T     = 0.0; 
@@ -299,11 +315,6 @@ void MotorControllerNode::exchange_motor_data_test()
     cmd.W =1.57*6.33;
     cmd.T =0.0;
     serial_.sendRecv(&cmd, &unittree_motor_data_vector_[2].data);    
-//     # 查看当前的延迟设置，默认通常是 16
-// cat /sys/class/tty/ttyUSB0/device/latency_timer
-
-// # 将其修改为 1 (这是最小值)
-// sudo sh -c 'echo 1 > /sys/class/tty/ttyUSB0/device/latency_timer'
 
 }
 

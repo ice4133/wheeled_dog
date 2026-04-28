@@ -86,7 +86,7 @@ private:
     int test = 0;
     bool feedback_flag = false; 
     // 电机数据
-    float K_P = 0.35;// 关节刚度系数   0~25.599
+    float K_P = 0.4;// 关节刚度系数   0~25.599
     float K_W = 0.3;// 关节速度系数   0~25.599
     //限位数据
 };
