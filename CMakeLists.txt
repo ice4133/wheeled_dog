@@ -11,7 +11,7 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
-
+find_package(Threads REQUIRED) # 这个不用添加xml，因为rclcpp已经链接了pthread库
 
 
 add_executable(motor_controller_node 
@@ -41,6 +41,10 @@ ament_target_dependencies(
   "rclcpp"
   "sensor_msgs"
 )
+target_link_libraries(motor_controller_node Threads::Threads)
+# 专门给电机节点分配一个线程，且不放在依赖库中，因为它是通过pthread库实现的，而不是通过rclcpp实现的
+
+
 
 ament_target_dependencies(
   controller_bridge_node

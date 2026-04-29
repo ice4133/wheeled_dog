@@ -3,6 +3,9 @@
 #include <chrono>
 
 
+/* 线程调度头文件*/
+#include <sched.h>
+#include <pthread.h>
 
 /*  命名空间 */
 using namespace std::chrono_literals;
@@ -333,6 +336,25 @@ void MotorControllerNode::exchange_motor_data_test()
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
+// --- 1. 强制绑定 CPU 核心 (对号入座到 Core 15) ---
+  cpu_set_t cpuset;
+  CPU_ZERO(&cpuset);       // 清空集合
+  CPU_SET(15, &cpuset);    // 将 Core 15 加入集合
+  
+  // 将当前主线程绑定到指定的 CPU 集合
+  int set_result = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+  if (set_result != 0) 
+  {
+    RCLCPP_WARN(rclcpp::get_logger("MotorControllerNode"), "Failed to set CPU affinity");
+  }
+
+  // --- 2. 设置实时调度策略 (授予 VIP 特权) ---
+  sched_param sch;
+  sch.sched_priority = 90; // 优先级范围通常为 1-99，90 属于极高优先级
+  // 将当前线程设置为先进先出 (SCHED_FIFO) 的实时策略
+  pthread_setschedparam(pthread_self(), SCHED_FIFO, &sch);
+
+
   auto node = std::make_shared<MotorControllerNode>();
   rclcpp::spin(node);
   rclcpp::shutdown();
