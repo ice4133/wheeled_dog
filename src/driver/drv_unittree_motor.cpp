@@ -94,13 +94,13 @@ void MotorControllerNode::Motor_Init()
 
 
   unittree_motor_data_vector_[0].slope_filter.Init(0.23f,50.0f,0.02f);
-  unittree_motor_data_vector_[1].slope_filter.Init(5.61f,50.0f,0.02f);
+  unittree_motor_data_vector_[1].slope_filter.Init(5.61f,12.5f,0.02f);
   unittree_motor_data_vector_[2].slope_filter.Init(1.31f,50.0f,0.02f);
-  unittree_motor_data_vector_[3].slope_filter.Init(0.85f,50.0f,0.02f);    
+  unittree_motor_data_vector_[3].slope_filter.Init(0.85f,12.5f,0.02f);    
   unittree_motor_data_vector_[4].slope_filter.Init(1.26f,50.0f,0.02f);
-  unittree_motor_data_vector_[5].slope_filter.Init(4.59f,50.0f,0.02f);
+  unittree_motor_data_vector_[5].slope_filter.Init(4.59f,12.5f,0.02f);
   unittree_motor_data_vector_[6].slope_filter.Init(4.91f,50.0f,0.02f);
-  unittree_motor_data_vector_[7].slope_filter.Init(1.61f,50.0f,0.02f);
+  unittree_motor_data_vector_[7].slope_filter.Init(1.61f,12.5f,0.02f);
 }
 
 
