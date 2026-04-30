@@ -106,7 +106,7 @@ void MotorControllerNode::Motor_Init()
   unittree_motor_data_vector_[6].slope_filter.Init(4.91f,25.0f,0.01f);
   unittree_motor_data_vector_[7].slope_filter.Init(1.61f,10.0f,0.01f);
 
-  class_fsm_controller.handleCommand(DogCommand::CMD_STAND_UP); // 切换状态机到趴下状态，确保安全
+  class_fsm_controller.handleCommand(DogCommand::CMD_STAND_UP); // 切换状态机到站立状态，准备接受运动指令
 }
 
 
@@ -116,22 +116,19 @@ void MotorControllerNode::Motor_Init()
 */
 void MotorControllerNode::Cmd_Topic_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) 
 {
-  int fsm_state = 0;
-    // 校验数据长度是否为12
-    if (msg->data.size() == 12)
+    int fsm_state = 0;
+    Alive_Flag+=1;
+    if(Alive_Flag == Pre_Alive_Flag)
     {
-        // 只做一件事：更新内存中的目标值
-        for (size_t i = 0; i < 12; ++i) 
-        {
-            unittree_motor_data_vector_[i].target_position = msg->data[i];
-        }
-    } 
+      fsm_state = 2; // 2 代表断联，进入停止状态
+    }
     else 
     {
-        RCLCPP_WARN(this->get_logger(), "收到错误的控制指令长度!");
+      fsm_state = 1; // 1 代表正常通信，进入移动状态
+      //数据处理：将上层发来的指令解析并存入电机数据结构中
     }
-
     Update_Fsm_State(fsm_state);
+    Pre_Alive_Flag = Alive_Flag;
 }
 
 
@@ -149,7 +146,6 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
   //发送指令并获取数据
     if(class_fsm_controller.getCurrentState() == DogState::MOVING)
     {
-      static_or_dynamic_flag = false;
       Inverse_Kinematics_Calculation();      
     }
 
@@ -214,7 +210,6 @@ void MotorControllerNode::Update_Wheel_Data()
   switch (class_fsm_controller.getCurrentState()) 
     {
       case DogState::PRONE:
-          static_or_dynamic_flag = true;
           break;
       case DogState::STAND_LOCKED:
         {

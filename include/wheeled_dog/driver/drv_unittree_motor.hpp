@@ -86,7 +86,8 @@ private:
 
     int test = 0;
     bool feedback_flag = false; 
-    bool static_or_dynamic_flag = false; // false:动态，true:静态
+    long long Alive_Flag = 0; //记录上次成功通信的时间戳，用于监测断联和重连逻辑
+    long long Pre_Alive_Flag = 0;
     // 电机数据
     float K_P = 0.4;// 关节刚度系数   0~25.599
     float K_W = 0.25;// 轮足动态速度系数   0~25.599
