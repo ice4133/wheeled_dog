@@ -141,7 +141,7 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
 {
 
 
-    auto start_time = std::chrono::high_resolution_clock::now();  
+    // auto start_time = std::chrono::high_resolution_clock::now();  
   //发送指令并获取数据
     #ifdef DEMO
     exchange_motor_data();
@@ -164,10 +164,18 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
     // joint_state_pub_->publish(state_msg);
 
 // --- 2. 记录结束时间并计算差值 ---
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+    // auto end_time = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     
-    RCLCPP_INFO(this->get_logger(), "Execution Time: %ld us", duration.count());    
+    // RCLCPP_INFO(this->get_logger(), "Execution Time: %ld us", duration.count());
+    if(++test <= 50)
+    {
+      RCLCPP_INFO(this->get_logger(), "motor0 %.2f", recv_datas_vec_[8].T);
+      RCLCPP_INFO(this->get_logger(), "motor1 %.2f", recv_datas_vec_[9].T);
+      RCLCPP_INFO(this->get_logger(), "motor2 %.2f", recv_datas_vec_[10].T);
+      RCLCPP_INFO(this->get_logger(), "motor3 %.2f", recv_datas_vec_[11].T);                      
+    }
+
 }
 
 /*
@@ -241,10 +249,10 @@ void MotorControllerNode::exchange_motor_data()
         send_cmds_vec_[i].id = i;
         send_cmds_vec_[i].mode = 1;
         send_cmds_vec_[i].K_P   = 0.0;
-        send_cmds_vec_[i].K_W   = K_W;
+        send_cmds_vec_[i].K_W   = 0.0;
         send_cmds_vec_[i].Pos   = 0.0; 
         send_cmds_vec_[i].W     = 0.0;
-        send_cmds_vec_[i].T     = 0.0; 
+        send_cmds_vec_[i].T     = 0.01; 
     }
 
    feedback_flag = serial_.sendRecv(send_cmds_vec_,recv_datas_vec_);
