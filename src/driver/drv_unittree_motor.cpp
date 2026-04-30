@@ -58,11 +58,12 @@ MotorControllerNode::~MotorControllerNode()
     cmd.T = 0.0;
     serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
   }
+  
+  class_fsm_controller.handleCommand(DogCommand::CMD_LAY_DOWN); // 切换状态机到趴下状态，确保安全
   RCLCPP_INFO(this->get_logger(), "节点关闭，执行安全停机...");
 }
 
 /*
-*
 * @brief 电机角度初始化函数：在节点启动时设置初始状态
 *
 */
@@ -105,7 +106,7 @@ void MotorControllerNode::Motor_Init()
   unittree_motor_data_vector_[6].slope_filter.Init(4.91f,25.0f,0.01f);
   unittree_motor_data_vector_[7].slope_filter.Init(1.61f,10.0f,0.01f);
 
-
+  class_fsm_controller.handleCommand(DogCommand::CMD_STAND_UP); // 切换状态机到趴下状态，确保安全
 }
 
 
@@ -115,6 +116,7 @@ void MotorControllerNode::Motor_Init()
 */
 void MotorControllerNode::Cmd_Topic_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) 
 {
+  int fsm_state = 0;
     // 校验数据长度是否为12
     if (msg->data.size() == 12)
     {
@@ -128,6 +130,8 @@ void MotorControllerNode::Cmd_Topic_Callback(const std_msgs::msg::Float64MultiAr
     {
         RCLCPP_WARN(this->get_logger(), "收到错误的控制指令长度!");
     }
+
+    Update_Fsm_State(fsm_state);
 }
 
 
@@ -144,7 +148,16 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
     // auto start_time = std::chrono::high_resolution_clock::now();  
   //发送指令并获取数据
     #ifdef DEMO
-    exchange_motor_data();
+    if(class_fsm_controller.getCurrentState() == DogState::MOVING)
+    {
+      static_or_dynamic_flag = false;
+      Inverse_Kinematics_Calculation();      
+    }
+
+    Update_Leg_Data();
+    Update_Wheel_Data();
+
+    Rs485_Send_Data();
     #endif
     #ifdef TEST
     exchange_motor_data_test();
@@ -178,84 +191,79 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
 
 }
 
-/*
-*
-* @brief 电机控制器节点与硬件交互函数：发送控制指令并接收状态反馈
-*
-*/
-void MotorControllerNode::exchange_motor_data() 
+void MotorControllerNode::Update_Fsm_State(int cmd_msg)
 {
-    // //  𝜏 = 𝜏𝑓𝑓 + 𝑘𝑝 × (𝑝𝑑𝑒𝑠 − 𝑝) + 𝑘𝑑 × (𝜔𝑑𝑒𝑠 − 𝜔)
-    // // 构造发送数据包 
-    // MotorCmd    cmd;
+  DogCommand cmd = static_cast<DogCommand>(cmd_msg);
+  class_fsm_controller.handleCommand(cmd);  
+}
 
-    // cmd.motorType = MotorType::GO_M8010_6; 
-
-    // // 位置环，腿部电机ID 0~7
-    // for(int i =0;i<8;++i)
-    // {
-    //     cmd.id = i;
-    //     cmd.mode = 1;
-    //     cmd.K_P   = K_P;
-    //     cmd.K_W   = 0.0;
-    //     cmd.Pos   = unittree_motor_data_vector_[i].target_position;
-    //     cmd.W     = 0.0;
-    //     cmd.T     = 0.0;         
-
-    //     // 与硬件进行通信，发送指令并接收状态
-    //     serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
-        
-    //     // 更新内存中的实际状态 
-    //     unittree_motor_data_vector_[i].actual_position = unittree_motor_data_vector_[i].data.Pos; 
-    //     unittree_motor_data_vector_[i].actual_velocity = unittree_motor_data_vector_[i].data.W;
-    //     unittree_motor_data_vector_[i].actual_effort = unittree_motor_data_vector_[i].data.T;      
-    // }
-
-    // // 速度环，轮毂电机ID 8~11
-    // for(int i = 8;i<12;++i)
-    // {
-    //     cmd.id = i;
-    //     cmd.mode = 1;
-    //     cmd.K_P   = 0.0;
-    //     cmd.K_W   = K_W;
-    //     cmd.Pos   = 0.0; 
-    //     cmd.W     = 0.0;
-    //     cmd.T     = 0.0;
-        
-    //     // 与硬件进行通信，发送指令并接收状态
-    //     serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
-        
-    //     // 更新内存中的实际状态 
-    //     unittree_motor_data_vector_[i].actual_position = unittree_motor_data_vector_[i].data.Pos;
-    //     unittree_motor_data_vector_[i].actual_velocity = unittree_motor_data_vector_[i].data.W;
-    //     unittree_motor_data_vector_[i].actual_effort = unittree_motor_data_vector_[i].data.T;         
-    // }
-
-
+void MotorControllerNode::Update_Leg_Data()
+{
+    // 位置环，腿部电机ID 0~7
     for(int i =0;i<8;++i)
     {
         send_cmds_vec_[i].motorType = MotorType::GO_M8010_6;
         send_cmds_vec_[i].id = i;
         send_cmds_vec_[i].mode = 1;
         send_cmds_vec_[i].K_P   = unittree_motor_data_vector_[i].K_P;
-        send_cmds_vec_[i].K_W   = unittree_motor_data_vector_[i].K_W;
+        send_cmds_vec_[i].K_W   = 0.0;
         send_cmds_vec_[i].Pos   = unittree_motor_data_vector_[i].slope_filter.update(unittree_motor_data_vector_[i].target_position);
         send_cmds_vec_[i].W     = 0.0; 
         send_cmds_vec_[i].T     = 0.0; 
     }
-    for(int i = 8;i<12;++i)
-    {
-        send_cmds_vec_[i].motorType = MotorType::GO_M8010_6;
-        send_cmds_vec_[i].id = i;
-        send_cmds_vec_[i].mode = 1;
-        send_cmds_vec_[i].K_P   = 0.0;
-        send_cmds_vec_[i].K_W   = 0.0;
-        send_cmds_vec_[i].Pos   = 0.0; 
-        send_cmds_vec_[i].W     = 0.0;
-        send_cmds_vec_[i].T     = 0.01; 
-    }
+}
 
-   feedback_flag = serial_.sendRecv(send_cmds_vec_,recv_datas_vec_);
+void MotorControllerNode::Update_Wheel_Data()
+{
+  switch (class_fsm_controller.getCurrentState()) 
+    {
+      case DogState::PRONE:
+          static_or_dynamic_flag = true;
+          break;
+      case DogState::STAND_LOCKED:
+        {
+          for(int i = 8;i<12;++i)
+          {
+              send_cmds_vec_[i].motorType = MotorType::GO_M8010_6;
+              send_cmds_vec_[i].id = i;
+              send_cmds_vec_[i].mode = 1;
+              send_cmds_vec_[i].K_P   = 0.0;
+              send_cmds_vec_[i].K_W   = 0.0;
+              send_cmds_vec_[i].Pos   = 0.0; 
+              send_cmds_vec_[i].W     = 0.0;
+              send_cmds_vec_[i].T     = 0.01; 
+          }
+        }
+          break;
+      case DogState::MOVING:
+          break;  
+    }
+    // 速度环，轮毂电机ID 8~11
+
+}
+
+void MotorControllerNode::Inverse_Kinematics_Calculation()
+{
+  double tmp_target_velocity = x_velocity_command * max_wheel_speed;
+  double tmp_target_angular = z_angular_command * max_angular_speed;
+
+  double v_left = tmp_target_velocity - tmp_target_angular * ( track_width / 2.0 );
+  double v_right = tmp_target_velocity + tmp_target_angular * ( track_width / 2.0 );
+
+  unittree_motor_data_vector_[8].target_velocity = v_left/wheel_radius;
+  unittree_motor_data_vector_[9].target_velocity = v_right/wheel_radius;
+  unittree_motor_data_vector_[10].target_velocity = v_left/wheel_radius;
+  unittree_motor_data_vector_[11].target_velocity = v_right/wheel_radius;   
+
+}
+/*
+*
+* @brief 电机控制器节点与硬件交互函数：发送控制指令并接收状态反馈
+*
+*/
+void MotorControllerNode::Rs485_Send_Data() 
+{
+  feedback_flag = serial_.sendRecv(send_cmds_vec_,recv_datas_vec_);
 }
 #ifdef TEST
 void MotorControllerNode::exchange_motor_data_test()

@@ -13,9 +13,13 @@
 
 //引入自己编写各种头文件
 #include "wheeled_dog/algorithm/alg_slope.hpp"
+#include "wheeled_dog/algorithm/alg_fsm.hpp"
 
 
 #define MOTOR_COUNT 12
+
+
+
 
 //#define TEST
 #define DEMO
@@ -52,13 +56,19 @@ private:
     void TIM_PeriodElapsedCallback();
 
 
-    void exchange_motor_data();
+    void Rs485_Send_Data();
     void Motor_Init();
     #ifdef TEST
     void exchange_motor_data_test();
     #endif
 
+    // 最终给电机发数据的函数，腿部和轮子
+    void Update_Leg_Data();
+    void Update_Wheel_Data();
+    void Inverse_Kinematics_Calculation();
 
+    // 为状态机预留的接口函数
+    void Update_Fsm_State(int cmd_msg);
   
     // 变量声明
     // ROS2 通信接口
@@ -77,7 +87,7 @@ private:
 
 
     //算法类声明，用以组合底层和算法
-
+    Class_FSM class_fsm_controller; // FSM状态机对象
 
 
 
@@ -87,8 +97,14 @@ private:
     // 电机数据
     float K_P = 0.4;// 关节刚度系数   0~25.599
     float K_W = 0.25;// 轮足动态速度系数   0~25.599
-    float K_W_Static = 0.01;// 轮足静态速度系数   0~25.599
-    //限位数据
+
+    double track_width = 0.3;      // 左右轮距 (单位：米)
+    double wheel_radius = 0.1;     // 车轮半径 (单位：米)
+    double max_wheel_speed = 2.0;  // 车轮最大允许线速度 (单位：m/s)，用于限幅保护
+    double max_angular_speed = 3.14*6.33; // 机器人最大允许角速度 (单位：rad/s)，用于限幅保护
+
+    double x_velocity_command = 0.0; // 来自上层的线速度指令 (单位：m/s)
+    double z_angular_command = 0.0; // 来自上层的角速度指令 (单位：rad/s)
 };
 
 
