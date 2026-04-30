@@ -20,10 +20,6 @@
 
 
 
-
-//#define TEST
-#define DEMO
-
 typedef struct 
 {
     double target_position;  // 目标位置 ±411774 (rad)
@@ -58,9 +54,6 @@ private:
 
     void Rs485_Send_Data();
     void Motor_Init();
-    #ifdef TEST
-    void exchange_motor_data_test();
-    #endif
 
     // 最终给电机发数据的函数，腿部和轮子
     void Update_Leg_Data();
