@@ -147,7 +147,6 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
 
     // auto start_time = std::chrono::high_resolution_clock::now();  
   //发送指令并获取数据
-    #ifdef DEMO
     if(class_fsm_controller.getCurrentState() == DogState::MOVING)
     {
       static_or_dynamic_flag = false;
@@ -158,10 +157,7 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
     Update_Wheel_Data();
 
     Rs485_Send_Data();
-    #endif
-    #ifdef TEST
-    exchange_motor_data_test();
-    #endif
+
 
     // 第二步：将刚刚拿到的实际硬件状态发布给 ROS2 的上层算法
     // auto state_msg = sensor_msgs::msg::JointState();
@@ -265,91 +261,7 @@ void MotorControllerNode::Rs485_Send_Data()
 {
   feedback_flag = serial_.sendRecv(send_cmds_vec_,recv_datas_vec_);
 }
-#ifdef TEST
-void MotorControllerNode::exchange_motor_data_test()
-{
-    MotorCmd    cmd;
-    cmd.motorType = MotorType::GO_M8010_6;
-  // if(++test % 100 ==0)
-  // {
-  //   unittree_motor_data_vector_[0].target_position+=0.1*6.33;
-  //   unittree_motor_data_vector_[1].target_position+=0.1*6.33;
-  //   for(int i=0;i<2;++i)
-  //   {
-  //     cmd.id = i;
-  //     cmd.mode = 1;
-  //     cmd.K_P   = K_P;
-  //     cmd.K_W   = 0.0;
-  //     cmd.Pos   = unittree_motor_data_vector_[i].target_position;
-  //     cmd.W     = 0.0; 
-  //     cmd.T     = 0.0; 
 
-  //     serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
-  //   }
-  //   }
-  //   if(test>60000)
-  //   {
-  //     test = 0;
-  //   }
-    // for (int  i = 0; i < MOTOR_COUNT; i++)
-    // {
-    //   send_cmds_vec_[i].motorType = MotorType::GO_M8010_6;
-    //   send_cmds_vec_[i].id = i;
-    //   send_cmds_vec_[i].mode = 1;
-    //   send_cmds_vec_[i].K_P   = 0.0;
-    //   send_cmds_vec_[i].K_W   = K_W;
-    //   send_cmds_vec_[i].Pos   = 0.0;
-    //   send_cmds_vec_[i].W     = 1.57*6.33;
-    //   send_cmds_vec_[i].T     = 0.0;
-    // }
-    
-    // serial_.sendRecv(send_cmds_vec_,recv_datas_vec_);
-
-    // MotorCmd    cmd;
-    // cmd.motorType = MotorType::GO_M8010_6;
-    // for(int i =0;i<2;++i)
-    // {
-    //     cmd.id = i;
-    //     cmd.mode = 1;
-    //     cmd.K_P   = 0.0;
-    //     cmd.K_W   = K_W;
-    //     cmd.Pos   = 0.0;
-    //     cmd.W     = 1.57*6.33;
-    //     cmd.T     = 0.0;
-
-    //     serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
-    // }
-    // MotorCmd    cmd;
-    // cmd.motorType = MotorType::GO_M8010_6;
-    // cmd.id = 6;
-    // cmd.mode = 1;
-    // cmd.K_P   = K_P;
-    // cmd.K_W   = 0.0;
-    // cmd.Pos   = -11.17;
-    // cmd.W     = 0.0;
-    // cmd.T     = 0.0;
-    // serial_.sendRecv(&cmd, &unittree_motor_data_vector_[6].data);
-    // cmd.id = 7;
-    // cmd.mode =1;
-    // cmd.K_P = K_P;
-    // cmd.K_W   = 0.0;
-    // cmd.Pos   = 1.77;
-    // cmd.W     = 0.0;
-    // cmd.T     = 0.0;
-    // serial_.sendRecv(&cmd, &unittree_motor_data_vector_[7].data);
-    
-    cmd.id =2;
-    cmd.mode =1;
-    cmd.K_P =0.0;
-    cmd.K_W=K_W;
-    cmd.Pos=0.0;
-    cmd.W =1.57*6.33;
-    cmd.T =0.0;
-    serial_.sendRecv(&cmd, &unittree_motor_data_vector_[2].data);    
-
-}
-
-#endif
 //主函数
 int main(int argc, char * argv[])
 {
