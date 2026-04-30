@@ -39,10 +39,6 @@ typedef struct
 
 }unittree_motor_data_t;
 
-
-
-
-
 class MotorControllerNode : public rclcpp::Node 
 {
 public:
@@ -87,9 +83,11 @@ private:
 
     int test = 0;
     bool feedback_flag = false; 
+    bool static_or_dynamic_flag = false; // false:动态，true:静态
     // 电机数据
     float K_P = 0.4;// 关节刚度系数   0~25.599
-    float K_W = 0.3;// 关节速度系数   0~25.599
+    float K_W = 0.25;// 轮足动态速度系数   0~25.599
+    float K_W_Static = 0.01;// 轮足静态速度系数   0~25.599
     //限位数据
 };
 

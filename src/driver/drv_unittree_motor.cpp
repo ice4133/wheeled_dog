@@ -17,7 +17,7 @@ using std::placeholders::_1;
 * @brief 电机控制器节点构造函数：节点启动
 *
 */
-MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial_("/dev/ttyUSB1")
+MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial_("/dev/ttyUSB0")
 {
   // 初始化电机
     Motor_Init();
@@ -70,22 +70,22 @@ void MotorControllerNode::Motor_Init()
 {
   unittree_motor_data_vector_.resize(MOTOR_COUNT); // 预分配12个电机的数据结构
 
-  unittree_motor_data_vector_[0].K_P = 0.55;
-  unittree_motor_data_vector_[1].K_P = 0.55;
-  unittree_motor_data_vector_[2].K_P = 0.55;
-  unittree_motor_data_vector_[3].K_P = 0.55;
-  unittree_motor_data_vector_[4].K_P = 0.65;
-  unittree_motor_data_vector_[5].K_P = 0.65;
-  unittree_motor_data_vector_[6].K_P = 0.65;
-  unittree_motor_data_vector_[7].K_P = 0.65;
-  unittree_motor_data_vector_[0].K_W = 0.03;
-  unittree_motor_data_vector_[1].K_W = 0.03;
-  unittree_motor_data_vector_[2].K_W = 0.03;
-  unittree_motor_data_vector_[3].K_W = 0.03;
-  unittree_motor_data_vector_[4].K_W = 0.04;
-  unittree_motor_data_vector_[5].K_W = 0.04; 
-  unittree_motor_data_vector_[6].K_W = 0.04;
-  unittree_motor_data_vector_[7].K_W = 0.04;
+  unittree_motor_data_vector_[0].K_P = 0.6;
+  unittree_motor_data_vector_[1].K_P = 0.6;
+  unittree_motor_data_vector_[2].K_P = 0.6;
+  unittree_motor_data_vector_[3].K_P = 0.6;
+  unittree_motor_data_vector_[4].K_P = 0.75;
+  unittree_motor_data_vector_[5].K_P = 0.75;
+  unittree_motor_data_vector_[6].K_P = 0.75;
+  unittree_motor_data_vector_[7].K_P = 0.75;
+  unittree_motor_data_vector_[0].K_W = 0.05;
+  unittree_motor_data_vector_[1].K_W = 0.05;
+  unittree_motor_data_vector_[2].K_W = 0.05;
+  unittree_motor_data_vector_[3].K_W = 0.05;
+  unittree_motor_data_vector_[4].K_W = 0.05;
+  unittree_motor_data_vector_[5].K_W = 0.05; 
+  unittree_motor_data_vector_[6].K_W = 0.05;
+  unittree_motor_data_vector_[7].K_W = 0.05;
   unittree_motor_data_vector_[0].target_position = 8.78;
   unittree_motor_data_vector_[1].target_position = 7.66;
   unittree_motor_data_vector_[2].target_position = -7.58;
@@ -96,14 +96,16 @@ void MotorControllerNode::Motor_Init()
   unittree_motor_data_vector_[7].target_position = -0.32; 
 
 
-  unittree_motor_data_vector_[0].slope_filter.Init(0.23f,50.0f,0.02f);
-  unittree_motor_data_vector_[1].slope_filter.Init(5.61f,12.5f,0.02f);
-  unittree_motor_data_vector_[2].slope_filter.Init(1.31f,50.0f,0.02f);
-  unittree_motor_data_vector_[3].slope_filter.Init(0.85f,12.5f,0.02f);    
-  unittree_motor_data_vector_[4].slope_filter.Init(1.26f,50.0f,0.02f);
-  unittree_motor_data_vector_[5].slope_filter.Init(4.59f,12.5f,0.02f);
-  unittree_motor_data_vector_[6].slope_filter.Init(4.91f,50.0f,0.02f);
-  unittree_motor_data_vector_[7].slope_filter.Init(1.61f,12.5f,0.02f);
+  unittree_motor_data_vector_[0].slope_filter.Init(0.23f,25.0f,0.01f);
+  unittree_motor_data_vector_[1].slope_filter.Init(5.61f,10.0f,0.01f);
+  unittree_motor_data_vector_[2].slope_filter.Init(1.31f,25.0f,0.01f);
+  unittree_motor_data_vector_[3].slope_filter.Init(0.85f,10.0f,0.01f);    
+  unittree_motor_data_vector_[4].slope_filter.Init(1.26f,25.0f,0.01f);
+  unittree_motor_data_vector_[5].slope_filter.Init(4.59f,10.0f,0.01f);
+  unittree_motor_data_vector_[6].slope_filter.Init(4.91f,25.0f,0.01f);
+  unittree_motor_data_vector_[7].slope_filter.Init(1.61f,10.0f,0.01f);
+
+
 }
 
 
@@ -336,22 +338,22 @@ void MotorControllerNode::exchange_motor_data_test()
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-// --- 1. 强制绑定 CPU 核心 (对号入座到 Core 15) ---
-  cpu_set_t cpuset;
-  CPU_ZERO(&cpuset);       // 清空集合
-  CPU_SET(15, &cpuset);    // 将 Core 15 加入集合
+// // --- 1. 强制绑定 CPU 核心 (对号入座到 Core 15) ---
+   cpu_set_t cpuset;
+   CPU_ZERO(&cpuset);       // 清空集合
+   CPU_SET(15, &cpuset);    // 将 Core 15 加入集合
   
-  // 将当前主线程绑定到指定的 CPU 集合
-  int set_result = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-  if (set_result != 0) 
-  {
-    RCLCPP_WARN(rclcpp::get_logger("MotorControllerNode"), "Failed to set CPU affinity");
-  }
+//   // 将当前主线程绑定到指定的 CPU 集合
+   int set_result = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+   if (set_result != 0) 
+   {
+     RCLCPP_WARN(rclcpp::get_logger("MotorControllerNode"), "Failed to set CPU affinity");
+   }
 
-  // --- 2. 设置实时调度策略 (授予 VIP 特权) ---
-  sched_param sch;
-  sch.sched_priority = 90; // 优先级范围通常为 1-99，90 属于极高优先级
-  // 将当前线程设置为先进先出 (SCHED_FIFO) 的实时策略
+//   // --- 2. 设置实时调度策略 (授予 VIP 特权) ---
+   sched_param sch;
+   sch.sched_priority = 90; // 优先级范围通常为 1-99，90 属于极高优先级
+   // 将当前线程设置为先进先出 (SCHED_FIFO) 的实时策略
   pthread_setschedparam(pthread_self(), SCHED_FIFO, &sch);
 
 
