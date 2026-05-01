@@ -58,6 +58,7 @@ private:
     // 最终给电机发数据的函数，腿部和轮子
     void Update_Leg_Data();
     void Update_Wheel_Data();
+    void Update_And_Send();
     void Inverse_Kinematics_Calculation();
     // 为状态机预留的接口函数
     void Update_Fsm_State(int cmd_msg);

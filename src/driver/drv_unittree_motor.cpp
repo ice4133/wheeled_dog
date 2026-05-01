@@ -141,13 +141,12 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
 {
 
 
-    // auto start_time = std::chrono::high_resolution_clock::now();  
+     //auto start_time = std::chrono::high_resolution_clock::now();  
   //发送指令并获取数据
     if(class_fsm_controller.getCurrentState() == DogState::MOVING)
     {
       Inverse_Kinematics_Calculation();          
     }
-
     Update_Leg_Data();
     Update_Wheel_Data();
 
@@ -168,10 +167,10 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
     // joint_state_pub_->publish(state_msg);
 
 // --- 2. 记录结束时间并计算差值 ---
-    // auto end_time = std::chrono::high_resolution_clock::now();
-    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+     //auto end_time = std::chrono::high_resolution_clock::now();
+     //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     
-    // RCLCPP_INFO(this->get_logger(), "Execution Time: %ld us", duration.count());
+     //RCLCPP_INFO(this->get_logger(), "Execution Time: %ld us", duration.count());
     // if(++test <= 50)
     // {
     //   RCLCPP_INFO(this->get_logger(), "motor0 %.2f", recv_datas_vec_[8].T);
@@ -197,13 +196,12 @@ void MotorControllerNode::Update_Leg_Data()
         send_cmds_vec_[i].id = i;
         send_cmds_vec_[i].mode = 1;
         send_cmds_vec_[i].K_P   = unittree_motor_data_vector_[i].K_P;
-        send_cmds_vec_[i].K_W   = 0.0;
+        send_cmds_vec_[i].K_W   = unittree_motor_data_vector_[i].K_W;
         send_cmds_vec_[i].Pos   = unittree_motor_data_vector_[i].slope_filter.update(unittree_motor_data_vector_[i].target_position);
         send_cmds_vec_[i].W     = 0.0; 
         send_cmds_vec_[i].T     = 0.0; 
     }
 }
-
 void MotorControllerNode::Update_Wheel_Data()
 {
   switch (class_fsm_controller.getCurrentState()) 
@@ -241,7 +239,6 @@ void MotorControllerNode::Update_Wheel_Data()
       }
           break;  
     }
-    // 速度环，轮毂电机ID 8~11
 
 }
 
