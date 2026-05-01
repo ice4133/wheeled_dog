@@ -19,21 +19,19 @@ using std::placeholders::_1;
 */
 MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial_("/dev/ttyUSB0")
 {
-  // 初始化电机
-    Motor_Init();
 
+  Motor_Init();
 
-  // 初始化发布者：向上层发送机器人的实际关节状态 (标准ROS2消息,先不自己写)
-    joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
+  joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
 
   // 初始化订阅者：接收上层的控制指令 (这里用Float64数组简化，实际可用更复杂的消息)
-    cmd_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+  cmd_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
         "joint_cmds", 10, std::bind(&MotorControllerNode::Cmd_Topic_Callback, this, _1));
 
   // 初始化控制循环定时器
-    timer_ = this->create_wall_timer(20ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
+  timer_ = this->create_wall_timer(20ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
     
-  RCLCPP_INFO(this->get_logger(), "四轮足电机控制节点已启动，运行频率: 500Hz");    
+  RCLCPP_INFO(this->get_logger(), "四轮足电机控制节点已启动，运行频率: 50Hz");    
 
 
 }
@@ -116,18 +114,19 @@ void MotorControllerNode::Motor_Init()
 */
 void MotorControllerNode::Cmd_Topic_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) 
 {
-    int fsm_state = 0;
+    (void)msg;
+    int fsm_state_cmd = 0;
     Alive_Flag+=1;
     if(Alive_Flag == Pre_Alive_Flag)
     {
-      fsm_state = 2; // 2 代表断联，进入停止状态
+      fsm_state_cmd = 2; // 2 代表断联，进入停止状态
     }
     else 
     {
-      fsm_state = 1; // 1 代表正常通信，进入移动状态
+      fsm_state_cmd = 1; // 1 代表正常通信，进入移动状态
       //数据处理：将上层发来的指令解析并存入电机数据结构中
     }
-    Update_Fsm_State(fsm_state);
+    Update_Fsm_State(fsm_state_cmd);
     Pre_Alive_Flag = Alive_Flag;
 }
 
@@ -146,7 +145,7 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
   //发送指令并获取数据
     if(class_fsm_controller.getCurrentState() == DogState::MOVING)
     {
-      Inverse_Kinematics_Calculation();      
+      Inverse_Kinematics_Calculation();          
     }
 
     Update_Leg_Data();
@@ -173,13 +172,13 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
     // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     
     // RCLCPP_INFO(this->get_logger(), "Execution Time: %ld us", duration.count());
-    if(++test <= 50)
-    {
-      RCLCPP_INFO(this->get_logger(), "motor0 %.2f", recv_datas_vec_[8].T);
-      RCLCPP_INFO(this->get_logger(), "motor1 %.2f", recv_datas_vec_[9].T);
-      RCLCPP_INFO(this->get_logger(), "motor2 %.2f", recv_datas_vec_[10].T);
-      RCLCPP_INFO(this->get_logger(), "motor3 %.2f", recv_datas_vec_[11].T);                      
-    }
+    // if(++test <= 50)
+    // {
+    //   RCLCPP_INFO(this->get_logger(), "motor0 %.2f", recv_datas_vec_[8].T);
+    //   RCLCPP_INFO(this->get_logger(), "motor1 %.2f", recv_datas_vec_[9].T);
+    //   RCLCPP_INFO(this->get_logger(), "motor2 %.2f", recv_datas_vec_[10].T);
+    //   RCLCPP_INFO(this->get_logger(), "motor3 %.2f", recv_datas_vec_[11].T);                      
+    // }
 
 }
 
@@ -209,24 +208,37 @@ void MotorControllerNode::Update_Wheel_Data()
 {
   switch (class_fsm_controller.getCurrentState()) 
     {
-      case DogState::PRONE:
+      case DogState::PRONE:    
           break;
       case DogState::STAND_LOCKED:
         {
           for(int i = 8;i<12;++i)
           {
-              send_cmds_vec_[i].motorType = MotorType::GO_M8010_6;
-              send_cmds_vec_[i].id = i;
-              send_cmds_vec_[i].mode = 1;
-              send_cmds_vec_[i].K_P   = 0.0;
-              send_cmds_vec_[i].K_W   = 0.0;
-              send_cmds_vec_[i].Pos   = 0.0; 
-              send_cmds_vec_[i].W     = 0.0;
-              send_cmds_vec_[i].T     = 0.01; 
+            send_cmds_vec_[i].motorType = MotorType::GO_M8010_6;
+            send_cmds_vec_[i].id = i;
+            send_cmds_vec_[i].mode = 1;
+            send_cmds_vec_[i].K_P   = 0.0;
+            send_cmds_vec_[i].K_W   = 0.0;
+            send_cmds_vec_[i].Pos   = 0.0; 
+            send_cmds_vec_[i].W     = 0.0;
+            send_cmds_vec_[i].T     = 0.01; 
           }
         }
           break;
       case DogState::MOVING:
+      {
+          for(int i = 8;i<12;++i)
+          {
+            send_cmds_vec_[i].motorType = MotorType::GO_M8010_6;
+            send_cmds_vec_[i].id = i;
+            send_cmds_vec_[i].mode = 1;
+            send_cmds_vec_[i].K_P = 0.0;
+            send_cmds_vec_[i].K_W   = K_W;
+            send_cmds_vec_[i].Pos   = 0.0; 
+            send_cmds_vec_[i].W     = unittree_motor_data_vector_[i].target_velocity;
+            send_cmds_vec_[i].T     = 0.00;             
+          }
+      }
           break;  
     }
     // 速度环，轮毂电机ID 8~11
@@ -235,16 +247,16 @@ void MotorControllerNode::Update_Wheel_Data()
 
 void MotorControllerNode::Inverse_Kinematics_Calculation()
 {
-  double tmp_target_velocity = x_velocity_command * max_wheel_speed;
+  double tmp_target_velocity = x_velocity_command * max_wheel_speed;//在这一步进行速度限制
   double tmp_target_angular = z_angular_command * max_angular_speed;
 
   double v_left = tmp_target_velocity - tmp_target_angular * ( track_width / 2.0 );
-  double v_right = tmp_target_velocity + tmp_target_angular * ( track_width / 2.0 );
+  double v_right = tmp_target_velocity + tmp_target_angular * ( track_width / 2.0 );//如果以逆时针为正，那么需要修改
 
-  unittree_motor_data_vector_[8].target_velocity = v_left/wheel_radius;
-  unittree_motor_data_vector_[9].target_velocity = v_right/wheel_radius;
-  unittree_motor_data_vector_[10].target_velocity = v_left/wheel_radius;
-  unittree_motor_data_vector_[11].target_velocity = v_right/wheel_radius;   
+  unittree_motor_data_vector_[8].target_velocity = v_left/wheel_radius*MOTOR_REDUCTION ;
+  unittree_motor_data_vector_[9].target_velocity = v_right/wheel_radius*MOTOR_REDUCTION;
+  unittree_motor_data_vector_[10].target_velocity = v_left/wheel_radius*MOTOR_REDUCTION;
+  unittree_motor_data_vector_[11].target_velocity = v_right/wheel_radius*MOTOR_REDUCTION;   
 
 }
 /*

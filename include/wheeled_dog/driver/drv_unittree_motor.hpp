@@ -17,7 +17,7 @@
 
 
 #define MOTOR_COUNT 12
-
+#define MOTOR_REDUCTION 6.33
 
 
 typedef struct 
@@ -59,7 +59,6 @@ private:
     void Update_Leg_Data();
     void Update_Wheel_Data();
     void Inverse_Kinematics_Calculation();
-
     // 为状态机预留的接口函数
     void Update_Fsm_State(int cmd_msg);
   
@@ -92,10 +91,10 @@ private:
     float K_P = 0.4;// 关节刚度系数   0~25.599
     float K_W = 0.25;// 轮足动态速度系数   0~25.599
 
-    double track_width = 0.3;      // 左右轮距 (单位：米)
+    double track_width = 0.6;      // 左右轮距 (单位：米)
     double wheel_radius = 0.1;     // 车轮半径 (单位：米)
     double max_wheel_speed = 2.0;  // 车轮最大允许线速度 (单位：m/s)，用于限幅保护
-    double max_angular_speed = 3.14*6.33; // 机器人最大允许角速度 (单位：rad/s)，用于限幅保护
+    double max_angular_speed = 3.14; // 机器人最大允许角速度 (单位：rad/s)，用于限幅保护
 
     double x_velocity_command = 0.0; // 来自上层的线速度指令 (单位：m/s)
     double z_angular_command = 0.0; // 来自上层的角速度指令 (单位：rad/s)
