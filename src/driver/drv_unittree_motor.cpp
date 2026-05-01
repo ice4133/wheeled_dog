@@ -25,7 +25,7 @@ MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial
   joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
 
   // 初始化订阅者：接收上层的控制指令 (这里用Float64数组简化，实际可用更复杂的消息)
-  cmd_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+  cmd_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
         "joint_cmds", 10, std::bind(&MotorControllerNode::Cmd_Topic_Callback, this, _1));
 
   // 初始化控制循环定时器
@@ -112,22 +112,11 @@ void MotorControllerNode::Motor_Init()
 * @brief 电机控制器节点订阅回调函数：当收到上层计算好的动作指令时触发
 *
 */
-void MotorControllerNode::Cmd_Topic_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) 
+void MotorControllerNode::Cmd_Topic_Callback(const geometry_msgs::msg::Twist::SharedPtr msg) 
 {
-    (void)msg;
-    int fsm_state_cmd = 0;
-    Alive_Flag+=1;
-    if(Alive_Flag == Pre_Alive_Flag)
-    {
-      fsm_state_cmd = 2; // 2 代表断联，进入停止状态
-    }
-    else 
-    {
-      fsm_state_cmd = 1; // 1 代表正常通信，进入移动状态
-      //数据处理：将上层发来的指令解析并存入电机数据结构中
-    }
-    Update_Fsm_State(fsm_state_cmd);
-    Pre_Alive_Flag = Alive_Flag;
+  Alive_Flag+=1;
+  x_velocity_command = msg->linear.x;
+  z_angular_command = msg->angular.z;
 }
 
 
@@ -143,6 +132,9 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
 
      //auto start_time = std::chrono::high_resolution_clock::now();  
   //发送指令并获取数据
+
+    Judge_Alive();
+
     if(class_fsm_controller.getCurrentState() == DogState::MOVING)
     {
       Inverse_Kinematics_Calculation();          
@@ -181,12 +173,77 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
 
 }
 
+
+
+/*
+*
+* @brief 判断当前遥控器是否在线的函数：通过监测通信是否正常来更新状态机状态
+*
+*/
+void MotorControllerNode::Judge_Alive()
+{
+
+  if(Alive_Flag == Pre_Alive_Flag)
+  {
+    if(class_fsm_controller.getCurrentState() == DogState::MOVING)
+    {
+      Update_Fsm_State(2); // 2 代表断联，进入停止状态
+    }
+
+  }
+  else 
+  {
+    Update_Fsm_State(1); // 1 代表正常通信，进入移动状态
+  }
+  Pre_Alive_Flag = Alive_Flag;
+}
+
+
+
+/*
+*
+* @brief 更新状态机状态的函数：根据通信状态切换 FSM 状态，确保在断联时电机进入安全状态
+*
+*/
 void MotorControllerNode::Update_Fsm_State(int cmd_msg)
 {
   DogCommand cmd = static_cast<DogCommand>(cmd_msg);
   class_fsm_controller.handleCommand(cmd);  
 }
 
+
+
+
+
+/*
+*
+* @brief 运动学逆解算函数：根据当前 FSM 状态和上层指令计算轮子目标速度
+*
+*/
+void MotorControllerNode::Inverse_Kinematics_Calculation()
+{
+  double tmp_target_velocity = x_velocity_command * max_wheel_speed;//在这一步进行速度限制
+  double tmp_target_angular = z_angular_command * max_angular_speed;
+
+  //当前版本以逆时针为正方向
+  double v_left = tmp_target_velocity - tmp_target_angular * ( track_width / 2.0 );
+  double v_right = tmp_target_velocity + tmp_target_angular * ( track_width / 2.0 );
+
+  unittree_motor_data_vector_[8].target_velocity = v_left/wheel_radius*MOTOR_REDUCTION ;
+  unittree_motor_data_vector_[9].target_velocity = -v_right/wheel_radius*MOTOR_REDUCTION;
+  unittree_motor_data_vector_[10].target_velocity = v_left/wheel_radius*MOTOR_REDUCTION;
+  unittree_motor_data_vector_[11].target_velocity = -v_right/wheel_radius*MOTOR_REDUCTION;   
+
+}
+
+
+
+
+/*
+*
+* @brief 更新腿部电机数据的函数
+*
+*/
 void MotorControllerNode::Update_Leg_Data()
 {
     // 位置环，腿部电机ID 0~7
@@ -202,6 +259,15 @@ void MotorControllerNode::Update_Leg_Data()
         send_cmds_vec_[i].T     = 0.0; 
     }
 }
+
+
+
+
+/*
+*
+* @brief 更新轮子电机数据的函数：根据当前 FSM 状态设置轮子电机的控制模式和目标速度
+*
+*/
 void MotorControllerNode::Update_Wheel_Data()
 {
   switch (class_fsm_controller.getCurrentState()) 
@@ -242,20 +308,9 @@ void MotorControllerNode::Update_Wheel_Data()
 
 }
 
-void MotorControllerNode::Inverse_Kinematics_Calculation()
-{
-  double tmp_target_velocity = x_velocity_command * max_wheel_speed;//在这一步进行速度限制
-  double tmp_target_angular = z_angular_command * max_angular_speed;
 
-  double v_left = tmp_target_velocity - tmp_target_angular * ( track_width / 2.0 );
-  double v_right = tmp_target_velocity + tmp_target_angular * ( track_width / 2.0 );//如果以逆时针为正，那么需要修改
 
-  unittree_motor_data_vector_[8].target_velocity = v_left/wheel_radius*MOTOR_REDUCTION ;
-  unittree_motor_data_vector_[9].target_velocity = v_right/wheel_radius*MOTOR_REDUCTION;
-  unittree_motor_data_vector_[10].target_velocity = v_left/wheel_radius*MOTOR_REDUCTION;
-  unittree_motor_data_vector_[11].target_velocity = v_right/wheel_radius*MOTOR_REDUCTION;   
 
-}
 /*
 *
 * @brief 电机控制器节点与硬件交互函数：发送控制指令并接收状态反馈

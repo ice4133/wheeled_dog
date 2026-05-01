@@ -6,7 +6,7 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <vector>
-
+#include "geometry_msgs/msg/twist.hpp" 
 // 引入第三方库的头文件
 #include "serialPort/SerialPort.h" 
 
@@ -48,26 +48,29 @@ public:
 private:
     //  函数声明
     //  核心回调与大循环
-    void Cmd_Topic_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg);
+    void Cmd_Topic_Callback(const geometry_msgs::msg::Twist::SharedPtr msg);
     void TIM_PeriodElapsedCallback();
 
 
-    void Rs485_Send_Data();
+    // 电机初始化
     void Motor_Init();
 
     // 最终给电机发数据的函数，腿部和轮子
+    void Inverse_Kinematics_Calculation();    
     void Update_Leg_Data();
     void Update_Wheel_Data();
-    void Update_And_Send();
-    void Inverse_Kinematics_Calculation();
+    void Rs485_Send_Data();
+
+
     // 为状态机预留的接口函数
     void Update_Fsm_State(int cmd_msg);
+    void Judge_Alive();
   
     // 变量声明
     // ROS2 通信接口
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
-    rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr cmd_sub_;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_sub_;
 
     // 数据缓存 (Data Buffers)
     // 保存12个电机的目标状态（来自上层）
@@ -94,7 +97,7 @@ private:
 
     double track_width = 0.6;      // 左右轮距 (单位：米)
     double wheel_radius = 0.1;     // 车轮半径 (单位：米)
-    double max_wheel_speed = 2.0;  // 车轮最大允许线速度 (单位：m/s)，用于限幅保护
+    double max_wheel_speed = 0.2;  // 车轮最大允许线速度 (单位：m/s)，用于限幅保护
     double max_angular_speed = 3.14; // 机器人最大允许角速度 (单位：rad/s)，用于限幅保护
 
     double x_velocity_command = 0.0; // 来自上层的线速度指令 (单位：m/s)

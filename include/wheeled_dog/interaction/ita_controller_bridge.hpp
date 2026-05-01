@@ -19,7 +19,7 @@ private:
 
     // ROS 2 通信接口声明
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_feedback_sub_;
-    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr motor_cmd_pub_;
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr motor_cmd_pub_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocity_subscriber_;
 
     // 用于降低终端打印频率的计数器

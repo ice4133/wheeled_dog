@@ -21,7 +21,7 @@ src/algorithm/alg_fsm.cpp
 )
 add_executable(controller_bridge_node src/interaction/ita_controller_bridge.cpp)
 add_executable(keyboard_controller_node src/device/dev_keyboard.cpp)
-
+add_executable(sbus_remote_controller_node src/device/dev_sbus_remote.cpp)
 
 target_include_directories(motor_controller_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -32,15 +32,22 @@ target_include_directories(controller_bridge_node PUBLIC
 target_include_directories(keyboard_controller_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>) 
+target_include_directories(sbus_remote_controller_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>) 
+
 
 target_compile_features(motor_controller_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 target_compile_features(controller_bridge_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 target_compile_features(keyboard_controller_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(sbus_remote_controller_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+
 
 ament_target_dependencies(
   motor_controller_node
   "rclcpp"
   "sensor_msgs"
+  "geometry_msgs"  
 )
 target_link_libraries(motor_controller_node Threads::Threads)
 # 专门给电机节点分配一个线程，且不放在依赖库中，因为它是通过pthread库实现的，而不是通过rclcpp实现的
@@ -56,6 +63,11 @@ ament_target_dependencies(
 )
 ament_target_dependencies(
   keyboard_controller_node
+  "rclcpp"
+  "geometry_msgs"
+)
+ament_target_dependencies(
+  sbus_remote_controller_node
   "rclcpp"
   "geometry_msgs"
 )
@@ -75,7 +87,8 @@ install(TARGETS controller_bridge_node
   DESTINATION lib/${PROJECT_NAME})
 install(TARGETS keyboard_controller_node
   DESTINATION lib/${PROJECT_NAME})
-
+install(TARGETS sbus_remote_controller_node
+  DESTINATION lib/${PROJECT_NAME})
 
 
 if(BUILD_TESTING)
