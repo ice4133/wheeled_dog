@@ -17,7 +17,7 @@ using std::placeholders::_1;
 * @brief 电机控制器节点构造函数：节点启动
 *
 */
-MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial_("/dev/ttyUSB1")
+MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial_("/dev/ttyUSB0")
 {
 
   Motor_Init();
@@ -29,7 +29,7 @@ MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial
         "joint_cmds", 10, std::bind(&MotorControllerNode::Cmd_Topic_Callback, this, _1));
 
   // 初始化控制循环定时器
-  timer_ = this->create_wall_timer(20ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
+  timer_ = this->create_wall_timer(2ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
     
   RCLCPP_INFO(this->get_logger(), "四轮足电机控制节点已启动，运行频率: 50Hz");    
 
@@ -130,7 +130,7 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
 {
 
 
-     //auto start_time = std::chrono::high_resolution_clock::now();  
+  auto start_time = std::chrono::high_resolution_clock::now();  
   //发送指令并获取数据
 
     Judge_Alive();
@@ -142,8 +142,9 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
     Update_Leg_Data();
     Update_Wheel_Data();
 
+    #ifdef FEEDBACK
     Rs485_Send_Data();
-
+    #endif
 
     // 第二步：将刚刚拿到的实际硬件状态发布给 ROS2 的上层算法
     // auto state_msg = sensor_msgs::msg::JointState();
@@ -159,10 +160,10 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
     // joint_state_pub_->publish(state_msg);
 
 // --- 2. 记录结束时间并计算差值 ---
-     //auto end_time = std::chrono::high_resolution_clock::now();
-     //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+     auto end_time = std::chrono::high_resolution_clock::now();
+     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     
-     //RCLCPP_INFO(this->get_logger(), "Execution Time: %ld us", duration.count());
+     RCLCPP_INFO(this->get_logger(), "Execution Time: %ld us", duration.count());
     // if(++test <= 50)
     // {
     //   RCLCPP_INFO(this->get_logger(), "motor0 %.2f", recv_datas_vec_[8].T);
@@ -263,7 +264,11 @@ void MotorControllerNode::Update_Leg_Data()
           send_cmds_vec_[i].K_W   = unittree_motor_data_vector_[i].K_W;
           send_cmds_vec_[i].Pos   = unittree_motor_data_vector_[i].slope_filter.update(unittree_motor_data_vector_[i].target_position);
           send_cmds_vec_[i].W     = 0.0; 
-          send_cmds_vec_[i].T     = 0.0; 
+          send_cmds_vec_[i].T     = 0.0;
+          
+          #ifdef JUST_SEND
+          Just_Send(i);
+          #endif
       }
     }
     break;
@@ -286,11 +291,13 @@ void MotorControllerNode::Update_Leg_Data()
         {
           send_cmds_vec_[i].T     = -1*Torque[(i%2)]*z_angular_command; //对其模型预测
         }
-	else
-	{
-	 send_cmds_vec_[i].T = 0.0;
-	}
-
+        else
+        {
+        send_cmds_vec_[i].T = 0.0;
+        }
+          #ifdef JUST_SEND
+          Just_Send(i);
+          #endif
       }  
     }
     break;
@@ -325,6 +332,10 @@ void MotorControllerNode::Update_Wheel_Data()
             send_cmds_vec_[i].Pos   = 0.0; 
             send_cmds_vec_[i].W     = 0.0;
             send_cmds_vec_[i].T     = 0.01; 
+
+            #ifdef JUST_SEND
+            Just_Send(i);
+            #endif
           }
         }
           break;
@@ -340,6 +351,10 @@ void MotorControllerNode::Update_Wheel_Data()
             send_cmds_vec_[i].Pos   = 0.0; 
             send_cmds_vec_[i].W     = unittree_motor_data_vector_[i].target_velocity;
             send_cmds_vec_[i].T     = 0.00;             
+
+            #ifdef JUST_SEND
+            Just_Send(i);
+            #endif
           }
       }
           break;  
@@ -360,27 +375,41 @@ void MotorControllerNode::Rs485_Send_Data()
   feedback_flag = serial_.sendRecv(send_cmds_vec_,recv_datas_vec_);
 }
 
+/*
+*
+* @brief 电机控制器节点与硬件交互函数：发送控制指令
+*
+*/
+void MotorControllerNode::Just_Send(int i)
+{
+    send_cmds_vec_[i].modify_data(&send_cmds_vec_[i]);
+    uint8_t *send_msg = send_cmds_vec_[i].get_motor_send_data();
+    size_t send_len = send_cmds_vec_[i].hex_len;
+    size_t send_size = serial_.send(send_msg, send_len);
+    usleep(50);
+}
+
 //主函数
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
 // // --- 1. 强制绑定 CPU 核心 (对号入座到 Core 15) ---
-   cpu_set_t cpuset;
-   CPU_ZERO(&cpuset);       // 清空集合
-   CPU_SET(15, &cpuset);    // 将 Core 15 加入集合
+//    cpu_set_t cpuset;
+//    CPU_ZERO(&cpuset);       // 清空集合
+//    CPU_SET(15, &cpuset);    // 将 Core 15 加入集合
   
-//   // 将当前主线程绑定到指定的 CPU 集合
-   int set_result = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-   if (set_result != 0) 
-   {
-     RCLCPP_WARN(rclcpp::get_logger("MotorControllerNode"), "Failed to set CPU affinity");
-   }
+// //   // 将当前主线程绑定到指定的 CPU 集合
+//    int set_result = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+//    if (set_result != 0) 
+//    {
+//      RCLCPP_WARN(rclcpp::get_logger("MotorControllerNode"), "Failed to set CPU affinity");
+//    }
 
-//   // --- 2. 设置实时调度策略 (授予 VIP 特权) ---
-   sched_param sch;
-   sch.sched_priority = 90; // 优先级范围通常为 1-99，90 属于极高优先级
-   // 将当前线程设置为先进先出 (SCHED_FIFO) 的实时策略
-  pthread_setschedparam(pthread_self(), SCHED_FIFO, &sch);
+// //   // --- 2. 设置实时调度策略 (授予 VIP 特权) ---
+//    sched_param sch;
+//    sch.sched_priority = 90; // 优先级范围通常为 1-99，90 属于极高优先级
+//    // 将当前线程设置为先进先出 (SCHED_FIFO) 的实时策略
+//   pthread_setschedparam(pthread_self(), SCHED_FIFO, &sch);
 
 
   auto node = std::make_shared<MotorControllerNode>();

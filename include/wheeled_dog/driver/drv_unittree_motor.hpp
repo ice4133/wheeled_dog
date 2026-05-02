@@ -20,6 +20,9 @@
 #define MOTOR_REDUCTION 6.33
 
 
+#define JUST_SEND
+//#define FEEDBACK
+
 typedef struct 
 {
     double target_position;  // 目标位置 ±411774 (rad)
@@ -60,7 +63,7 @@ private:
     void Update_Leg_Data();
     void Update_Wheel_Data();
     void Rs485_Send_Data();
-
+    void Just_Send(int i);
 
     // 为状态机预留的接口函数
     void Update_Fsm_State(int cmd_msg);
