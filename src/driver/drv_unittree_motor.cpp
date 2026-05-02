@@ -17,7 +17,7 @@ using std::placeholders::_1;
 * @brief 电机控制器节点构造函数：节点启动
 *
 */
-MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial_("/dev/ttyUSB0")
+MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial_("/dev/ttyUSB1")
 {
 
   Motor_Init();
@@ -246,20 +246,59 @@ void MotorControllerNode::Inverse_Kinematics_Calculation()
 */
 void MotorControllerNode::Update_Leg_Data()
 {
-    // 位置环，腿部电机ID 0~7
-    for(int i =0;i<8;++i)
+
+  switch (class_fsm_controller.getCurrentState()) 
+  {
+    case DogState::PRONE:    
+    break;
+    case DogState::STAND_LOCKED:
     {
+      // 位置环，腿部电机ID 0~7
+      for(int i =0;i<8;++i)
+      {
+          send_cmds_vec_[i].motorType = MotorType::GO_M8010_6;
+          send_cmds_vec_[i].id = i;
+          send_cmds_vec_[i].mode = 1;
+          send_cmds_vec_[i].K_P   = unittree_motor_data_vector_[i].K_P;
+          send_cmds_vec_[i].K_W   = unittree_motor_data_vector_[i].K_W;
+          send_cmds_vec_[i].Pos   = unittree_motor_data_vector_[i].slope_filter.update(unittree_motor_data_vector_[i].target_position);
+          send_cmds_vec_[i].W     = 0.0; 
+          send_cmds_vec_[i].T     = 0.0; 
+      }
+    }
+    break;
+  case DogState::MOVING:
+    {
+      for(int i =0;i<8;++i)
+      {
         send_cmds_vec_[i].motorType = MotorType::GO_M8010_6;
         send_cmds_vec_[i].id = i;
         send_cmds_vec_[i].mode = 1;
         send_cmds_vec_[i].K_P   = unittree_motor_data_vector_[i].K_P;
         send_cmds_vec_[i].K_W   = unittree_motor_data_vector_[i].K_W;
         send_cmds_vec_[i].Pos   = unittree_motor_data_vector_[i].slope_filter.update(unittree_motor_data_vector_[i].target_position);
-        send_cmds_vec_[i].W     = 0.0; 
-        send_cmds_vec_[i].T     = 0.0; 
-    }
-}
+        send_cmds_vec_[i].W     = 0.0;
+        if(z_angular_command > 0.0)
+        {
+          send_cmds_vec_[i].T = -1*Torque[(i%2)]*z_angular_command; //01为正，23为负，如此循环
+        } 
+        else if(z_angular_command < 0.0)
+        {
+          send_cmds_vec_[i].T     = -1*Torque[(i%2)]*z_angular_command; //对其模型预测
+        }
+	else
+	{
+	 send_cmds_vec_[i].T = 0.0;
+	}
 
+      }  
+    }
+    break;
+
+          
+          
+  }
+}
 
 
 

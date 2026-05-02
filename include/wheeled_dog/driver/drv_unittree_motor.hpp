@@ -66,6 +66,8 @@ private:
     void Update_Fsm_State(int cmd_msg);
     void Judge_Alive();
   
+
+    double Torque[2]={0.4,1.0};
     // 变量声明
     // ROS2 通信接口
     rclcpp::TimerBase::SharedPtr timer_;
