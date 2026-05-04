@@ -64,6 +64,7 @@ private:
     void Update_Wheel_Data();
     void Rs485_Send_Data();
     void Just_Send(int i);
+    void Send_But_Rec(int i);
 
     // 为状态机预留的接口函数
     void Update_Fsm_State(int cmd_msg);
@@ -81,14 +82,18 @@ private:
     // 保存12个电机的目标状态（来自上层）
     std::vector<unittree_motor_data_t> unittree_motor_data_vector_;
     // 专门用于给 sendRecv 喂数据的连续内存容器，提前分配好 12 个空间
-    std::vector<MotorCmd>  send_cmds_vec_{MOTOR_COUNT};
-    std::vector<MotorData> recv_datas_vec_{MOTOR_COUNT};
+    // std::vector<MotorCmd>  send_cmds_vec_{MOTOR_COUNT};
+    // std::vector<MotorData> recv_datas_vec_{MOTOR_COUNT};
+    MotorCmd  send_cmds_vec_[MOTOR_COUNT];
+    MotorData recv_datas_vec_[MOTOR_COUNT];
     //第三方库串口对象
     SerialPort serial_; // 保持串口连接的生命周期
-
+    int serial_fd_; // 串口缓冲区状态
+    void Delete_Serial_Buffer();
 
     //算法类声明，用以组合底层和算法
     Class_FSM class_fsm_controller; // FSM状态机对象
+
 
 
 
@@ -98,7 +103,7 @@ private:
     long long Pre_Alive_Flag = 0;
     // 电机数据
     float K_P = 0.4;// 关节刚度系数   0~25.599
-    float K_W = 0.25;// 轮足动态速度系数   0~25.599
+    float K_W = 0.01;// 轮足动态速度系数   0~25.599
 
     double track_width = 0.6;      // 左右轮距 (单位：米)
     double wheel_radius = 0.1;     // 车轮半径 (单位：米)
@@ -107,6 +112,7 @@ private:
 
     double x_velocity_command = 0.0; // 来自上层的线速度指令 (单位：m/s)
     double z_angular_command = 0.0; // 来自上层的角速度指令 (单位：rad/s)
+    double z_angular_command_last = 0.0;
 };
 
 

@@ -7,21 +7,32 @@
 #include <sched.h>
 #include <pthread.h>
 
+/* 清除串口缓冲区头文件 */
+#include <fcntl.h> //文件控制定义
+#include <termios.h> // POSIX 终端控制定义
+#include <unistd.h> // UNIX 标准函数定义
+#include <iostream>
 /*  命名空间 */
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
-
+#define SERIAL "/dev/ttyUSB1"
 /*
 *
 * @brief 电机控制器节点构造函数：节点启动
 *
 */
-MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial_("/dev/ttyUSB0")
+MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial_(SERIAL)
 {
 
   Motor_Init();
 
+  serial_fd_=open(SERIAL,O_RDWR | O_NOCTTY | O_NDELAY);
+  if(serial_fd_ == -1)
+  {
+    RCLCPP_INFO(this->get_logger(),"无法打开串口");
+    return;
+  }
   joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
 
   // 初始化订阅者：接收上层的控制指令 (这里用Float64数组简化，实际可用更复杂的消息)
@@ -29,9 +40,9 @@ MotorControllerNode::MotorControllerNode(): Node("motor_controller_node"),serial
         "joint_cmds", 10, std::bind(&MotorControllerNode::Cmd_Topic_Callback, this, _1));
 
   // 初始化控制循环定时器
-  timer_ = this->create_wall_timer(2ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
+  timer_ = this->create_wall_timer(10ms, std::bind(&MotorControllerNode::TIM_PeriodElapsedCallback, this));
     
-  RCLCPP_INFO(this->get_logger(), "四轮足电机控制节点已启动，运行频率: 50Hz");    
+  RCLCPP_INFO(this->get_logger(), "四轮足电机控制节点已启动，运行频率: 500Hz");    
 
 
 }
@@ -58,6 +69,10 @@ MotorControllerNode::~MotorControllerNode()
   }
   
   class_fsm_controller.handleCommand(DogCommand::CMD_LAY_DOWN); // 切换状态机到趴下状态，确保安全
+  if(serial_fd_!=-1)
+  {
+    close(serial_fd_);
+  }
   RCLCPP_INFO(this->get_logger(), "节点关闭，执行安全停机...");
 }
 
@@ -105,6 +120,47 @@ void MotorControllerNode::Motor_Init()
   unittree_motor_data_vector_[7].slope_filter.Init(1.61f,10.0f,0.01f);
 
   class_fsm_controller.handleCommand(DogCommand::CMD_STAND_UP); // 切换状态机到站立状态，准备接受运动指令
+
+  auto start_time = std::chrono::high_resolution_clock::now();   
+
+  MotorCmd    cmd;
+  cmd.motorType = MotorType::GO_M8010_6;
+  for(int i = 8; i < MOTOR_COUNT; ++i)
+  {
+    cmd.id = i;
+    cmd.mode = 0;
+    cmd.K_P = 0.0;
+    cmd.K_W = 0.0;
+    cmd.Pos = 0.0;
+    cmd.W = 0.0;
+    cmd.T = 0.0;
+    serial_.sendRecv(&cmd, &unittree_motor_data_vector_[i].data);
+    RCLCPP_INFO(this->get_logger(), "pos: %.2f", unittree_motor_data_vector_[i].data.Pos);
+  }
+
+  auto end_time = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+
+  RCLCPP_INFO(this->get_logger(), "Execution Time: %ld us", duration.count());  
+
+  unittree_motor_data_vector_[8].K_P = 0.05;
+  unittree_motor_data_vector_[9].K_P = 0.05;
+  unittree_motor_data_vector_[10].K_P = 0.05;
+  unittree_motor_data_vector_[11].K_P = 0.05;
+  unittree_motor_data_vector_[8].K_W = 0.0;
+  unittree_motor_data_vector_[9].K_W = 0.0;
+  unittree_motor_data_vector_[10].K_W = 0.0;    
+  unittree_motor_data_vector_[11].K_W = 0.0;
+  
+  unittree_motor_data_vector_[8].target_position = unittree_motor_data_vector_[8].data.Pos;
+  unittree_motor_data_vector_[9].target_position = unittree_motor_data_vector_[9].data.Pos;
+  unittree_motor_data_vector_[10].target_position = unittree_motor_data_vector_[10].data.Pos;
+  unittree_motor_data_vector_[11].target_position = unittree_motor_data_vector_[11].data.Pos;
+
+  unittree_motor_data_vector_[8].slope_filter.Init(unittree_motor_data_vector_[8].data.Pos,25.0f,0.01f);
+  unittree_motor_data_vector_[9].slope_filter.Init(unittree_motor_data_vector_[9].data.Pos,25.0f,0.01f);
+  unittree_motor_data_vector_[10].slope_filter.Init(unittree_motor_data_vector_[10].data.Pos,25.0f,0.01f);
+  unittree_motor_data_vector_[11].slope_filter.Init(unittree_motor_data_vector_[11].data.Pos,25.0f,0.01f);  
 }
 
 
@@ -117,6 +173,21 @@ void MotorControllerNode::Cmd_Topic_Callback(const geometry_msgs::msg::Twist::Sh
   Alive_Flag+=1;
   x_velocity_command = msg->linear.x;
   z_angular_command = msg->angular.z;
+
+  double tmp = z_angular_command - z_angular_command_last;
+  if(tmp >0.05)
+  {
+    z_angular_command += 0.05;
+  }
+  else if( tmp < -0.05)
+  {
+    z_angular_command -= 0.05;
+  }
+  else
+  {
+
+  }
+  z_angular_command_last = z_angular_command;
 }
 
 
@@ -140,6 +211,7 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
       Inverse_Kinematics_Calculation();          
     }
     Update_Leg_Data();
+    Delete_Serial_Buffer();
     Update_Wheel_Data();
 
     #ifdef FEEDBACK
@@ -173,8 +245,23 @@ void MotorControllerNode::TIM_PeriodElapsedCallback()
     // }
 
 }
-
-
+/*
+*
+* @brief 清空串口缓冲区
+*
+*/
+void MotorControllerNode::Delete_Serial_Buffer()
+{
+  usleep(1000);
+  if(tcflush(serial_fd_,TCIFLUSH)==0)
+  {
+    RCLCPP_DEBUG(this->get_logger(),"接收缓冲区已清空");
+  }
+  else
+  {
+    RCLCPP_WARN(this->get_logger(),"清空缓冲区失败");
+  }
+}
 
 /*
 *
@@ -189,6 +276,7 @@ void MotorControllerNode::Judge_Alive()
     if(class_fsm_controller.getCurrentState() == DogState::MOVING)
     {
       Update_Fsm_State(2); // 2 代表断联，进入停止状态
+      z_angular_command=z_angular_command_last=0.0;
     }
 
   }
@@ -235,6 +323,10 @@ void MotorControllerNode::Inverse_Kinematics_Calculation()
   unittree_motor_data_vector_[10].target_velocity = v_left/wheel_radius*MOTOR_REDUCTION;
   unittree_motor_data_vector_[11].target_velocity = -v_right/wheel_radius*MOTOR_REDUCTION;   
 
+  unittree_motor_data_vector_[8].target_position += unittree_motor_data_vector_[8].target_velocity*0.02;
+  unittree_motor_data_vector_[9].target_position += unittree_motor_data_vector_[9].target_velocity*0.02;
+  unittree_motor_data_vector_[10].target_position += unittree_motor_data_vector_[10].target_velocity*0.02;
+  unittree_motor_data_vector_[11].target_position += unittree_motor_data_vector_[11].target_velocity*0.02;      
 }
 
 
@@ -331,11 +423,12 @@ void MotorControllerNode::Update_Wheel_Data()
             send_cmds_vec_[i].K_W   = 0.0;
             send_cmds_vec_[i].Pos   = 0.0; 
             send_cmds_vec_[i].W     = 0.0;
-            send_cmds_vec_[i].T     = 0.01; 
+            send_cmds_vec_[i].T     = (((i%2)!=0)?1:-1)*0.02; 
 
-            #ifdef JUST_SEND
-            Just_Send(i);
-            #endif
+            // #ifdef JUST_SEND
+            // Just_Send(i);
+            // #endif
+            Send_But_Rec(i);
           }
         }
           break;
@@ -343,18 +436,29 @@ void MotorControllerNode::Update_Wheel_Data()
       {
           for(int i = 8;i<12;++i)
           {
+            // send_cmds_vec_[i].motorType = MotorType::GO_M8010_6;
+            // send_cmds_vec_[i].id = i;
+            // send_cmds_vec_[i].mode = 1;
+            // send_cmds_vec_[i].K_P = unittree_motor_data_vector_[i].K_P;
+            // send_cmds_vec_[i].K_W   = unittree_motor_data_vector_[i].K_W;
+            // send_cmds_vec_[i].Pos   = unittree_motor_data_vector_[i].slope_filter.update(unittree_motor_data_vector_[i].target_position); 
+            // send_cmds_vec_[i].W     = 0.0;
+            // send_cmds_vec_[i].T     = 0.0;             
+
+            // #ifdef JUST_SEND
+            // Just_Send(i);
+            // #endif
             send_cmds_vec_[i].motorType = MotorType::GO_M8010_6;
             send_cmds_vec_[i].id = i;
             send_cmds_vec_[i].mode = 1;
             send_cmds_vec_[i].K_P = 0.0;
-            send_cmds_vec_[i].K_W   = K_W;
+            send_cmds_vec_[i].K_W   = unittree_motor_data_vector_[i].K_W;
             send_cmds_vec_[i].Pos   = 0.0; 
             send_cmds_vec_[i].W     = unittree_motor_data_vector_[i].target_velocity;
-            send_cmds_vec_[i].T     = 0.00;             
+            send_cmds_vec_[i].T     = 0.0;             
 
-            #ifdef JUST_SEND
-            Just_Send(i);
-            #endif
+            serial_.sendRecv(&send_cmds_vec_[i],&recv_datas_vec_[i]);
+            RCLCPP_INFO(this->get_logger(), "%d号电机,w为%.2f", i,recv_datas_vec_[i].W);
           }
       }
           break;  
@@ -385,8 +489,31 @@ void MotorControllerNode::Just_Send(int i)
     send_cmds_vec_[i].modify_data(&send_cmds_vec_[i]);
     uint8_t *send_msg = send_cmds_vec_[i].get_motor_send_data();
     size_t send_len = send_cmds_vec_[i].hex_len;
-    size_t send_size = serial_.send(send_msg, send_len);
+    serial_.send(send_msg, send_len);
     usleep(50);
+}
+
+
+/*
+*
+* @brief 电机控制器节点与硬件交互函数：发送控制指令
+*
+*/
+void MotorControllerNode::Send_But_Rec(int i)
+{
+    send_cmds_vec_[i].modify_data(&send_cmds_vec_[i]);
+    uint8_t *send_msg = send_cmds_vec_[i].get_motor_send_data();
+    uint8_t *recv_msg = recv_datas_vec_[i].get_motor_recv_data();
+    size_t send_len = send_cmds_vec_[i].hex_len;
+    size_t recv_len = recv_datas_vec_[i].hex_len;    
+    serial_.send(send_msg, send_len);
+    usleep(200);
+    serial_.recv(recv_msg, recv_len);
+    bool ok =recv_datas_vec_[i].extract_data(&recv_datas_vec_[i]);  
+    if(ok == true)
+    {
+      RCLCPP_INFO(this->get_logger(),"电机%d的W是%.2f",i,recv_datas_vec_[i].W);
+    }
 }
 
 //主函数
